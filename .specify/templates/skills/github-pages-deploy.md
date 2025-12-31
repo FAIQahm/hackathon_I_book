@@ -2,9 +2,9 @@
 name: github-pages-deploy
 description: |
   Deploy Docusaurus static site to GitHub Pages for automated CI/CD pipeline.
-  Bundled resources: GitHub Actions workflow, docusaurus.config.js deployment block.
+  Bundled resources: GitHub Actions workflow, docusaurus.config.js deployment block, homepage redirect, i18n scaffolding.
   Use when setting up new Docusaurus project, adding CI/CD, or migrating to automated deployment.
-version: 1.1.0
+version: 1.2.0
 inputs:
   organization:
     description: GitHub username or organization
@@ -15,9 +15,9 @@ inputs:
     required: true
     example: my-docs
   node_version:
-    description: Node.js version for build
+    description: Node.js version for build (20+ required for Docusaurus 3.9+)
     required: false
-    default: "18"
+    default: "20"
   locales:
     description: Locales to build (comma-separated or "all")
     required: false
@@ -35,7 +35,7 @@ Run this command from your project root to set up deployment:
 # Create workflow directory
 mkdir -p .github/workflows
 
-# Create deploy.yml
+# Create deploy.yml (Node.js 20 required for Docusaurus 3.9+)
 cat << 'EOF' > .github/workflows/deploy.yml
 name: Deploy to GitHub Pages
 
@@ -63,7 +63,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
 
       - name: Install dependencies
@@ -71,6 +71,8 @@ jobs:
 
       - name: Build website (all locales)
         run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -90,7 +92,70 @@ jobs:
 EOF
 
 echo "✅ Created .github/workflows/deploy.yml"
+
+# Create homepage redirect with useBaseUrl (prevents double-slash 404s)
+mkdir -p src/pages
+cat << 'EOF' > src/pages/index.js
+import React from 'react';
+import {Redirect} from '@docusaurus/router';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+export default function Home() {
+  return <Redirect to={useBaseUrl('/docs')} />;
+}
+EOF
+
+echo "✅ Created src/pages/index.js (homepage redirect)"
+
+# Create i18n scaffolding for Urdu locale
+mkdir -p i18n/ur/docusaurus-plugin-content-docs/current
+mkdir -p i18n/ur/docusaurus-theme-classic
+
+cat << 'EOF' > i18n/ur/docusaurus-theme-classic/navbar.json
+{
+  "title": {
+    "message": "عنوان",
+    "description": "The title in the navbar"
+  }
+}
+EOF
+
+cat << 'EOF' > i18n/ur/docusaurus-theme-classic/footer.json
+{
+  "copyright": {
+    "message": "کاپی رائٹ © 2025",
+    "description": "The footer copyright"
+  }
+}
+EOF
+
+cat << 'EOF' > i18n/ur/code.json
+{
+  "theme.docs.paginator.previous": {
+    "message": "پچھلا",
+    "description": "The label used to navigate to the previous doc"
+  },
+  "theme.docs.paginator.next": {
+    "message": "اگلا",
+    "description": "The label used to navigate to the next doc"
+  }
+}
+EOF
+
+cat << 'EOF' > i18n/ur/docusaurus-plugin-content-docs/current/intro.md
+---
+sidebar_position: 1
+---
+
+# خوش آمدید
+
+یہ اردو ترجمہ ہے۔
+EOF
+
+echo "✅ Created i18n/ur/ scaffolding (Urdu locale)"
+echo ""
 echo "📝 Now update docusaurus.config.js with your organization and repository names"
+echo "⚠️  CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes: '/<repo>/'"
 ```
 
 ## Bundled Resources
@@ -126,7 +191,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20  # Required: Docusaurus 3.9+ dropped Node 18 support
           cache: npm
 
       - name: Install dependencies
@@ -137,7 +202,7 @@ jobs:
       - name: Build website (all locales)
         run: npm run build
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
+          NODE_OPTIONS: --max-old-space-size=4096  # Required for i18n/multi-locale builds
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -160,7 +225,7 @@ jobs:
 - Docusaurus builds ALL locales defined in `docusaurus.config.js` by default
 - To build specific locale only: `npm run build -- --locale en`
 - To build multiple: `npm run build -- --locale en --locale ur`
-- `NODE_OPTIONS` increases memory for multi-locale builds
+- `NODE_OPTIONS` increases memory for multi-locale builds (essential for Urdu/RTL)
 
 ### 2. Docusaurus Configuration Block
 
@@ -175,19 +240,28 @@ const config = {
   // Replace <organization> with your GitHub username or org name
   url: 'https://<organization>.github.io',
 
-  // Replace <repository> with your repository name
-  // Use '/' if deploying to <organization>.github.io (user/org site)
+  // ⚠️ CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes!
+  // ✅ Correct: '/<repository>/'
+  // ❌ Wrong:   '<repository>/'   (missing leading slash → 404 errors)
+  // ❌ Wrong:   '/<repository>'   (missing trailing slash → 404 errors)
+  // ❌ Wrong:   'repository'      (missing both → 404 errors)
   baseUrl: '/<repository>/',
 
   // GitHub Pages deployment settings
   organizationName: '<organization>', // GitHub org/user name
   projectName: '<repository>',        // Repository name
   trailingSlash: false,
-  deploymentBranch: 'gh-pages',
 
   // Recommended: Fail build on broken links
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+
+  // Markdown configuration (Docusaurus v3.9+)
+  // ⚠️ Use markdown.hooks, NOT root-level onBrokenMarkdownLinks
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   // ===========================================
   // i18n Configuration (for multi-locale builds)
@@ -215,13 +289,55 @@ const config = {
 module.exports = config;
 ```
 
-### 3. Input Variables
+### 3. Homepage Redirect
+
+**File**: `src/pages/index.js`
+
+```javascript
+import React from 'react';
+import {Redirect} from '@docusaurus/router';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+export default function Home() {
+  return <Redirect to={useBaseUrl('/docs')} />;
+}
+```
+
+> **⚠️ Important:** Always use `useBaseUrl()` for redirects to prevent double-slash issues with baseUrl.
+
+### 4. RTL Support CSS
+
+**File**: `src/css/custom.css` (add to existing)
+
+```css
+/* RTL Support for Urdu */
+[dir='rtl'] {
+  text-align: right;
+}
+
+[dir='rtl'] .navbar__items {
+  flex-direction: row-reverse;
+}
+
+[dir='rtl'] .pagination-nav {
+  flex-direction: row-reverse;
+}
+
+/* Code blocks stay LTR */
+[dir='rtl'] pre,
+[dir='rtl'] code {
+  direction: ltr;
+  text-align: left;
+}
+```
+
+### 5. Input Variables
 
 | Variable | Required | Default | Description | Example |
 |----------|----------|---------|-------------|---------|
 | `organization` | Yes | - | GitHub username or org | `my-org` |
 | `repository` | Yes | - | Repository name | `my-docs` |
-| `node_version` | No | `18` | Node.js version | `20` |
+| `node_version` | No | `20` | Node.js version (20+ required) | `20` |
 | `locales` | No | `all` | Locales to build | `en,ur` |
 
 ## Usage Instructions
@@ -246,7 +362,7 @@ projectName: '<repository>',
 
 // After (example)
 url: 'https://my-org.github.io',
-baseUrl: '/physical-ai-book/',
+baseUrl: '/physical-ai-book/',  // ⚠️ MUST have both slashes!
 organizationName: 'my-org',
 projectName: 'physical-ai-book',
 ```
@@ -269,9 +385,14 @@ The workflow will automatically build all locales and deploy.
 
 ## Verification Checklist
 
-- [ ] `.github/workflows/deploy.yml` exists
+- [ ] `.github/workflows/deploy.yml` exists with `node-version: 20`
+- [ ] `.github/workflows/deploy.yml` has `NODE_OPTIONS: --max-old-space-size=4096`
 - [ ] `docusaurus.config.js` has correct `url`, `baseUrl`, `organizationName`, `projectName`
+- [ ] `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'`
+- [ ] `src/pages/index.js` uses `useBaseUrl()` for redirect (not hardcoded path)
+- [ ] `markdown.hooks.onBrokenMarkdownLinks` (not root-level config)
 - [ ] `docusaurus.config.js` has `i18n` config with all locales
+- [ ] `i18n/ur/` directory exists with translated content
 - [ ] GitHub Pages is enabled in repository settings
 - [ ] Source is set to "GitHub Actions"
 - [ ] First deployment completed successfully
@@ -279,6 +400,16 @@ The workflow will automatically build all locales and deploy.
 - [ ] Urdu site accessible at `https://<org>.github.io/<repo>/ur/`
 
 ## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **Build fails on Node version** | Ensure `node-version: 20` in deploy.yml (Docusaurus 3.9+ dropped Node 18 support) |
+| **404 on all pages** | Check `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'` |
+| **404 on homepage** | Create `src/pages/index.js` with redirect using `useBaseUrl()` |
+| **Double slashes in URL** | Use `useBaseUrl()` hook, not hardcoded paths like `/docs/intro` |
+| **404 on /ur/ locale** | Create `i18n/ur/` folder with translated docs and theme files |
+| **Deprecation warnings** | Move `onBrokenMarkdownLinks` to `markdown.hooks` (not root config) |
+| **Memory errors (i18n builds)** | Set `NODE_OPTIONS=--max-old-space-size=4096` (essential for multi-locale) |
 
 ### Build Fails
 
@@ -289,16 +420,6 @@ npm run build
 # If memory error, increase heap size
 NODE_OPTIONS=--max-old-space-size=4096 npm run build
 ```
-
-### 404 Errors
-
-- Check `baseUrl` matches repository name (with leading and trailing slashes)
-- Verify `url` is correct for your organization
-
-### Assets Not Loading
-
-- Ensure `trailingSlash: false` is set
-- Check browser console for path errors
 
 ### i18n Build Issues
 
@@ -315,6 +436,23 @@ ls -la i18n/ur/
 - Verify `direction: 'rtl'` in locale config
 - Check font imports in `src/css/custom.css`
 - Ensure `i18n/ur/` directory has translated content
+
+## Requirements
+
+- **Node.js 20+** (required - Docusaurus 3.9+ dropped Node 18 support)
+- Docusaurus 3.9+
+- GitHub repository with Pages enabled
+
+## Environment Variables
+
+The workflow includes essential environment variables:
+
+```yaml
+env:
+  NODE_OPTIONS: --max-old-space-size=4096  # Required for i18n/Urdu builds
+```
+
+This is critical for multi-locale builds which consume significantly more memory during compilation.
 
 ## Related
 
