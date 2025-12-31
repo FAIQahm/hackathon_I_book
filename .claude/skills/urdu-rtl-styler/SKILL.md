@@ -2,23 +2,35 @@
 name: urdu-rtl-styler
 description: |
   Apply Urdu typography and RTL layout logic for Docusaurus sites.
-  Bundled Resources: Includes the 'Noto Nastaliq Urdu' font-stack CSS and specific '[dir=rtl]' overrides for Docusaurus navigation and sidebar.
+  Bundled Resources: Noto Nastaliq Urdu font-stack CSS, [dir=rtl] overrides, i18n scaffolding.
   Use when adding Urdu/RTL support to a Docusaurus project.
-version: 1.0.0
+version: 1.1.0
 inputs:
-  font_source:
-    description: Font source (google or local)
-    required: false
-    default: "google"
-    example: "local"
-  primary_font:
+  font:
     description: Primary Urdu font family
     required: false
     default: "Noto Nastaliq Urdu"
-  fallback_fonts:
+    example: "Jameel Noori Nastaleeq"
+  fallback:
     description: Fallback font families (comma-separated)
     required: false
     default: "Jameel Noori Nastaleeq, Urdu Typesetting, serif"
+  source:
+    description: Font source (google or local)
+    required: false
+    default: "google"
+  line_height:
+    description: Line height for Urdu text (Nastaliq needs 2.0-2.4)
+    required: false
+    default: "2.2"
+  auto_config:
+    description: Auto-update docusaurus.config.js with i18n settings
+    required: false
+    default: "false"
+  scaffold:
+    description: Create i18n/ur/ directory with sample content
+    required: false
+    default: "false"
 ---
 
 # Urdu RTL Styler
@@ -27,7 +39,73 @@ Apply proper Urdu typography and RTL (Right-to-Left) layout to Docusaurus sites.
 
 ## Quick Setup
 
-Run from your Docusaurus project root:
+**Full automated setup (recommended):**
+
+```bash
+.claude/skills/urdu-rtl-styler/scripts/setup.sh --auto-config --scaffold
+```
+
+**Basic setup:**
+
+```bash
+.claude/skills/urdu-rtl-styler/scripts/setup.sh
+```
+
+**Custom font setup:**
+
+```bash
+.claude/skills/urdu-rtl-styler/scripts/setup.sh \
+  --font "Jameel Noori Nastaleeq" \
+  --source local \
+  --line-height 2.4 \
+  --auto-config \
+  --scaffold
+```
+
+## Command Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--font FONT` | Primary Urdu font | `Noto Nastaliq Urdu` |
+| `--fallback FONTS` | Fallback fonts (comma-separated) | `Jameel Noori Nastaleeq, ...` |
+| `--source SOURCE` | Font source: `google` or `local` | `google` |
+| `--line-height N` | Line height for Urdu text | `2.2` |
+| `--auto-config` | Auto-update docusaurus.config.js | off |
+| `--scaffold` | Create i18n/ur/ directory structure | off |
+| `-h, --help` | Show help message | - |
+
+## What It Does
+
+### 1. CSS Styles (always)
+- Adds RTL CSS to `src/css/custom.css`
+- Configures font stack with your chosen font
+- Sets up Docusaurus component overrides
+
+### 2. Auto-Config (--auto-config)
+- Detects existing i18n configuration
+- Adds Urdu locale with `direction: 'rtl'` if missing
+- Preserves existing configuration
+
+### 3. i18n Scaffolding (--scaffold)
+Creates complete Urdu content structure:
+```
+i18n/ur/
+├── code.json                    # UI string translations
+├── docusaurus-theme-classic/
+│   ├── navbar.json              # Navbar translations
+│   └── footer.json              # Footer translations
+└── docusaurus-plugin-content-docs/current/
+    ├── intro.md                 # Welcome page in Urdu
+    ├── chapter-1/index.md
+    ├── chapter-2/index.md
+    └── chapter-3/index.md
+```
+
+---
+
+## Manual Setup (Alternative)
+
+If you prefer manual setup, run from your Docusaurus project root:
 
 ```bash
 # Create custom CSS directory if not exists
