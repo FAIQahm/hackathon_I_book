@@ -40,42 +40,132 @@ module.exports = {
   projectName: '<repository>',
   trailingSlash: false,
 
+  // Broken link detection
+  onBrokenLinks: 'throw',
+
+  // Markdown configuration (Docusaurus v3.6+)
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
+
   // i18n for multi-locale builds
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'ur'],
     localeConfigs: {
-      en: { label: 'English', direction: 'ltr' },
-      ur: { label: 'اردو', direction: 'rtl' },
+      en: { label: 'English', direction: 'ltr', htmlLang: 'en-US' },
+      ur: { label: 'اردو', direction: 'rtl', htmlLang: 'ur-PK' },
     },
   },
 };
 ```
 
-### 3. Enable GitHub Pages
+### 3. Create Homepage Redirect
+
+Create `src/pages/index.js` to redirect to docs:
+
+```javascript
+import React from 'react';
+import {Redirect} from '@docusaurus/router';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+
+export default function Home() {
+  return <Redirect to={useBaseUrl('/docs/intro')} />;
+}
+```
+
+> **Important:** Always use `useBaseUrl()` for redirects to prevent double-slash issues with baseUrl.
+
+### 4. Create i18n Scaffolding (for Urdu locale)
+
+```bash
+mkdir -p i18n/ur/docusaurus-plugin-content-docs/current
+mkdir -p i18n/ur/docusaurus-theme-classic
+```
+
+Create `i18n/ur/docusaurus-theme-classic/navbar.json`:
+```json
+{
+  "title": {
+    "message": "Your Title in Urdu",
+    "description": "The title in the navbar"
+  }
+}
+```
+
+Create `i18n/ur/docusaurus-theme-classic/footer.json`:
+```json
+{
+  "copyright": {
+    "message": "کاپی رائٹ © 2025",
+    "description": "The footer copyright"
+  }
+}
+```
+
+Copy and translate docs to `i18n/ur/docusaurus-plugin-content-docs/current/`.
+
+### 5. Add RTL Support
+
+Add to `src/css/custom.css`:
+
+```css
+/* RTL Support for Urdu */
+[dir='rtl'] {
+  text-align: right;
+}
+
+[dir='rtl'] .navbar__items {
+  flex-direction: row-reverse;
+}
+
+/* Code blocks stay LTR */
+[dir='rtl'] pre,
+[dir='rtl'] code {
+  direction: ltr;
+  text-align: left;
+}
+```
+
+### 6. Enable GitHub Pages
 
 1. Repository **Settings** → **Pages**
 2. Source: **GitHub Actions**
 3. Save
 
-### 4. Deploy
+### 7. Deploy
 
 ```bash
 git add . && git commit -m "feat: add GitHub Pages deployment" && git push
 ```
 
-## Verification
+## Verification Checklist
 
-- [ ] `.github/workflows/deploy.yml` exists
+- [ ] `.github/workflows/deploy.yml` exists with Node.js 20
 - [ ] `docusaurus.config.js` has url, baseUrl, organizationName, projectName
+- [ ] `src/pages/index.js` uses `useBaseUrl()` for redirect
+- [ ] `markdown.hooks.onBrokenMarkdownLinks` (not root-level)
 - [ ] GitHub Pages source set to "GitHub Actions"
+- [ ] `i18n/ur/` directory exists with translated content
 - [ ] Site accessible at `https://<org>.github.io/<repo>/`
 - [ ] Urdu site at `https://<org>.github.io/<repo>/ur/`
 
 ## Troubleshooting
 
-**Build fails**: Run `npm run build` locally first. For memory errors: `NODE_OPTIONS=--max-old-space-size=4096 npm run build`
+| Issue | Solution |
+|-------|----------|
+| **Build fails on Node version** | Ensure `node-version: 20` in deploy.yml (Docusaurus requires v20+) |
+| **404 on homepage** | Create `src/pages/index.js` with redirect |
+| **Double slashes in URL** | Use `useBaseUrl()` hook, not hardcoded paths |
+| **404 on /ur/ locale** | Create `i18n/ur/` folder with translated docs |
+| **Deprecation warnings** | Move `onBrokenMarkdownLinks` to `markdown.hooks` |
+| **Memory errors** | Set `NODE_OPTIONS=--max-old-space-size=4096` |
+| **baseUrl mismatch** | Ensure baseUrl matches repo name: `/<repo>/` |
 
-**404 errors**: Check baseUrl matches repository name with slashes: `/<repo>/`
+## Requirements
 
-**i18n issues**: Verify `i18n/ur/` directory exists with translated content.
+- Node.js 20+
+- Docusaurus 3.6+
+- GitHub repository with Pages enabled

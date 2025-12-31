@@ -10,20 +10,79 @@ REPO="${2:?Usage: $0 <organization> <repository>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "Setting up GitHub Pages deployment..."
-echo "  Organization: $ORG"
-echo "  Repository: $REPO"
+echo "🚀 Setting up GitHub Pages deployment..."
+echo "   Organization: $ORG"
+echo "   Repository: $REPO"
+echo ""
 
-# Create workflow directory
+# Create workflow directory and copy deploy.yml
 mkdir -p .github/workflows
-
-# Copy and customize deploy.yml
 sed -e "s/<organization>/$ORG/g" -e "s/<repository>/$REPO/g" \
     "$SKILL_DIR/assets/deploy.yml" > .github/workflows/deploy.yml
+echo "✅ Created .github/workflows/deploy.yml (Node.js 20)"
 
-echo "✅ Created .github/workflows/deploy.yml"
+# Create homepage redirect with useBaseUrl
+mkdir -p src/pages
+cat > src/pages/index.js << 'EOF'
+import React from 'react';
+import {Redirect} from '@docusaurus/router';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
-# Check if docusaurus.config.js exists
+export default function Home() {
+  return <Redirect to={useBaseUrl('/docs/intro')} />;
+}
+EOF
+echo "✅ Created src/pages/index.js (homepage redirect)"
+
+# Create i18n scaffolding for Urdu
+mkdir -p i18n/ur/docusaurus-plugin-content-docs/current
+mkdir -p i18n/ur/docusaurus-theme-classic
+
+cat > i18n/ur/docusaurus-theme-classic/navbar.json << EOF
+{
+  "title": {
+    "message": "عنوان",
+    "description": "The title in the navbar"
+  }
+}
+EOF
+
+cat > i18n/ur/docusaurus-theme-classic/footer.json << EOF
+{
+  "copyright": {
+    "message": "کاپی رائٹ © $(date +%Y)",
+    "description": "The footer copyright"
+  }
+}
+EOF
+
+cat > i18n/ur/code.json << 'EOF'
+{
+  "theme.docs.paginator.previous": {
+    "message": "پچھلا",
+    "description": "The label used to navigate to the previous doc"
+  },
+  "theme.docs.paginator.next": {
+    "message": "اگلا",
+    "description": "The label used to navigate to the next doc"
+  }
+}
+EOF
+echo "✅ Created i18n/ur/ scaffolding (Urdu locale)"
+
+# Create intro.md placeholder for Urdu
+cat > i18n/ur/docusaurus-plugin-content-docs/current/intro.md << 'EOF'
+---
+sidebar_position: 1
+---
+
+# خوش آمدید
+
+یہ اردو ترجمہ ہے۔
+EOF
+echo "✅ Created i18n/ur intro placeholder"
+
+# Check if docusaurus.config.js exists and show config
 if [ -f "docusaurus.config.js" ]; then
     echo ""
     echo "📝 Update docusaurus.config.js with:"
@@ -32,13 +91,27 @@ if [ -f "docusaurus.config.js" ]; then
     echo "  baseUrl: '/$REPO/',"
     echo "  organizationName: '$ORG',"
     echo "  projectName: '$REPO',"
+    echo "  trailingSlash: false,"
+    echo ""
+    echo "  // Use markdown.hooks (not root-level)"
+    echo "  markdown: {"
+    echo "    hooks: {"
+    echo "      onBrokenMarkdownLinks: 'warn',"
+    echo "    },"
+    echo "  },"
     echo ""
 else
     echo "⚠️  docusaurus.config.js not found - create it first"
 fi
 
 echo ""
-echo "Next steps:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 Next steps:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  1. Update docusaurus.config.js with the values above"
 echo "  2. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions"
-echo "  3. Push to main branch to trigger deployment"
+echo "  3. Push to main/master branch to trigger deployment"
+echo ""
+echo "🔗 Your site will be at: https://$ORG.github.io/$REPO/"
+echo "🔗 Urdu version at: https://$ORG.github.io/$REPO/ur/"
+echo ""
