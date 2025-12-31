@@ -68,9 +68,7 @@ cat > i18n/ur/code.json << 'EOF'
   }
 }
 EOF
-echo "✅ Created i18n/ur/ scaffolding (Urdu locale)"
 
-# Create intro.md placeholder for Urdu
 cat > i18n/ur/docusaurus-plugin-content-docs/current/intro.md << 'EOF'
 ---
 sidebar_position: 1
@@ -80,7 +78,7 @@ sidebar_position: 1
 
 یہ اردو ترجمہ ہے۔
 EOF
-echo "✅ Created i18n/ur intro placeholder"
+echo "✅ Created i18n/ur/ scaffolding (Urdu locale)"
 
 # Check if docusaurus.config.js exists and show config
 if [ -f "docusaurus.config.js" ]; then
@@ -109,8 +107,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "📋 Next steps:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  1. Update docusaurus.config.js with the values above"
-echo "  2. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions"
-echo "  3. Push to main/master branch to trigger deployment"
+echo "  2. ⚠️  CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes: '/$REPO/'"
+echo "  3. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions"
+echo "  4. Push to main/master branch to trigger deployment"
 echo ""
 echo "🔗 Your site will be at: https://$ORG.github.io/$REPO/"
 echo "🔗 Urdu version at: https://$ORG.github.io/$REPO/ur/"
