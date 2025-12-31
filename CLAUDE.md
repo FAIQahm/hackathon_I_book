@@ -206,5 +206,35 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 - `history/adr/` — Architecture Decision Records
 - `.specify/` — SpecKit Plus templates and scripts
 
+## Deployment & Infrastructure
+
+| Component | Platform | Notes |
+|-----------|----------|-------|
+| **Frontend** | Docusaurus on GitHub Pages | Static/client-side only. No server-side rendering. |
+| **Backend** | FastAPI on Vercel | Handles RAG, Chatbot logic, and Authentication. Serverless functions. |
+| **Database** | Neon Serverless Postgres | Primary data store for users, sessions, cache, conversation history. |
+| **Vector Store** | Qdrant Cloud | Vector embeddings for RAG retrieval. |
+
+### Constraints
+
+- **Frontend**: Must be purely static. All dynamic functionality via API calls to backend.
+- **Backend**: Vercel serverless has 10s default timeout (can extend to 60s on Pro). Design for stateless execution.
+- **Database**: Use connection pooling for Neon. Respect serverless cold start considerations.
+- **Vector Store**: Qdrant Cloud managed service. No self-hosted infrastructure.
+
+### Environment Variables
+
+```
+# Frontend (.env)
+NEXT_PUBLIC_API_URL=https://api.yourproject.vercel.app
+
+# Backend (.env)
+OPENAI_API_KEY=sk-...
+QDRANT_URL=https://xxx.qdrant.io
+QDRANT_API_KEY=...
+DATABASE_URL=postgresql://...@xxx.neon.tech/dbname?sslmode=require
+JWT_SECRET=...
+```
+
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
