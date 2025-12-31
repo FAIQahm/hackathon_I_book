@@ -35,7 +35,14 @@ Add to `docusaurus.config.js`:
 ```javascript
 module.exports = {
   url: 'https://<organization>.github.io',
+
+  // ⚠️ CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes!
+  // ✅ Correct: '/<repository>/'
+  // ❌ Wrong:   '<repository>/'   (missing leading slash → 404 errors)
+  // ❌ Wrong:   '/<repository>'   (missing trailing slash → 404 errors)
+  // ❌ Wrong:   'repository'      (missing both → 404 errors)
   baseUrl: '/<repository>/',
+
   organizationName: '<organization>',
   projectName: '<repository>',
   trailingSlash: false,
@@ -43,14 +50,14 @@ module.exports = {
   // Broken link detection
   onBrokenLinks: 'throw',
 
-  // Markdown configuration (Docusaurus v3.6+)
+  // Markdown configuration (Docusaurus v3.9+)
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'warn',
     },
   },
 
-  // i18n for multi-locale builds
+  // i18n for multi-locale builds (requires NODE_OPTIONS for memory)
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'ur'],
@@ -61,6 +68,8 @@ module.exports = {
   },
 };
 ```
+
+> **⚠️ Common 404 Cause:** Missing leading or trailing slash in `baseUrl`. Always use `'/<repo>/'` format.
 
 ### 3. Create Homepage Redirect
 
@@ -143,10 +152,12 @@ git add . && git commit -m "feat: add GitHub Pages deployment" && git push
 
 ## Verification Checklist
 
-- [ ] `.github/workflows/deploy.yml` exists with Node.js 20
+- [ ] `.github/workflows/deploy.yml` exists with `node-version: 20`
+- [ ] `.github/workflows/deploy.yml` has `NODE_OPTIONS: --max-old-space-size=4096`
 - [ ] `docusaurus.config.js` has url, baseUrl, organizationName, projectName
-- [ ] `src/pages/index.js` uses `useBaseUrl()` for redirect
-- [ ] `markdown.hooks.onBrokenMarkdownLinks` (not root-level)
+- [ ] `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'`
+- [ ] `src/pages/index.js` uses `useBaseUrl()` for redirect (not hardcoded path)
+- [ ] `markdown.hooks.onBrokenMarkdownLinks` (not root-level config)
 - [ ] GitHub Pages source set to "GitHub Actions"
 - [ ] `i18n/ur/` directory exists with translated content
 - [ ] Site accessible at `https://<org>.github.io/<repo>/`
@@ -156,16 +167,27 @@ git add . && git commit -m "feat: add GitHub Pages deployment" && git push
 
 | Issue | Solution |
 |-------|----------|
-| **Build fails on Node version** | Ensure `node-version: 20` in deploy.yml (Docusaurus requires v20+) |
-| **404 on homepage** | Create `src/pages/index.js` with redirect |
+| **Build fails on Node version** | Ensure `node-version: 20` in deploy.yml (Docusaurus 3.9+ dropped Node 18 support) |
+| **404 on all pages** | Check `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'` |
+| **404 on homepage** | Create `src/pages/index.js` with redirect using `useBaseUrl()` |
 | **Double slashes in URL** | Use `useBaseUrl()` hook, not hardcoded paths |
 | **404 on /ur/ locale** | Create `i18n/ur/` folder with translated docs |
 | **Deprecation warnings** | Move `onBrokenMarkdownLinks` to `markdown.hooks` |
-| **Memory errors** | Set `NODE_OPTIONS=--max-old-space-size=4096` |
-| **baseUrl mismatch** | Ensure baseUrl matches repo name: `/<repo>/` |
+| **Memory errors (i18n builds)** | Set `NODE_OPTIONS=--max-old-space-size=4096` (essential for multi-locale) |
 
 ## Requirements
 
-- Node.js 20+
-- Docusaurus 3.6+
+- **Node.js 20+** (required - Docusaurus 3.9+ dropped Node 18 support)
+- Docusaurus 3.9+
 - GitHub repository with Pages enabled
+
+## Environment Variables
+
+The workflow includes essential environment variables:
+
+```yaml
+env:
+  NODE_OPTIONS: --max-old-space-size=4096  # Required for i18n/Urdu builds
+```
+
+This is critical for multi-locale builds which consume significantly more memory during compilation.
