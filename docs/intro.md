@@ -24,6 +24,12 @@ Welcome to the **Physical AI Educational Book** - your comprehensive guide to le
 
 Select a chapter from the sidebar to begin your journey into Physical AI.
 
+## Languages
+
+This book is available in:
+- 🇬🇧 English
+- 🇵🇰 اردو (Urdu)
+
 ---
 
-*Last updated: December 2025*
+*Last updated: December 31, 2025*
