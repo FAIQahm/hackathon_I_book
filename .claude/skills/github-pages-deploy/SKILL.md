@@ -4,7 +4,7 @@ description: |
   Deploy Docusaurus static site to GitHub Pages for automated CI/CD pipeline.
   Bundled resources: GitHub Actions workflow, docusaurus.config.js deployment block, homepage redirect, i18n scaffolding.
   Use when setting up new Docusaurus project, adding CI/CD, or migrating to automated deployment.
-version: 1.2.0
+version: 1.3.0
 inputs:
   organization:
     description: GitHub username or organization
@@ -14,6 +14,11 @@ inputs:
     description: Repository name
     required: true
     example: my-docs
+  default_branch:
+    description: Default branch name (main or master) - MUST match your repo's default branch
+    required: false
+    default: "main"
+    example: "master"
   node_version:
     description: Node.js version for build (20+ required for Docusaurus 3.9+)
     required: false
@@ -36,12 +41,14 @@ Run this command from your project root to set up deployment:
 mkdir -p .github/workflows
 
 # Create deploy.yml (Node.js 20 required for Docusaurus 3.9+)
+# ⚠️ IMPORTANT: Change 'main' to 'master' if your repo uses master branch!
+# Check with: git branch --show-current
 cat << 'EOF' > .github/workflows/deploy.yml
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main]  # ⚠️ Change to [master] if your repo uses master branch
   workflow_dispatch:
 
 permissions:
@@ -164,12 +171,14 @@ echo "⚠️  CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes: '/<
 
 **File**: `.github/workflows/deploy.yml`
 
+> **⚠️ CRITICAL:** The `branches` value MUST match your repository's default branch. Use `[main]` for repos with main branch, `[master]` for repos with master branch. Mismatch = workflow never triggers!
+
 ```yaml
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main]  # ⚠️ Change to [master] if your repo uses master branch
   workflow_dispatch:
 
 permissions:
@@ -337,6 +346,7 @@ export default function Home() {
 |----------|----------|---------|-------------|---------|
 | `organization` | Yes | - | GitHub username or org | `my-org` |
 | `repository` | Yes | - | Repository name | `my-docs` |
+| `default_branch` | No | `main` | Default branch (main or master) | `master` |
 | `node_version` | No | `20` | Node.js version (20+ required) | `20` |
 | `locales` | No | `all` | Locales to build | `en,ur` |
 
@@ -386,6 +396,7 @@ The workflow will automatically build all locales and deploy.
 ## Verification Checklist
 
 - [ ] `.github/workflows/deploy.yml` exists with `node-version: 20`
+- [ ] `.github/workflows/deploy.yml` `branches:` matches your default branch (main OR master)
 - [ ] `.github/workflows/deploy.yml` has `NODE_OPTIONS: --max-old-space-size=4096`
 - [ ] `docusaurus.config.js` has correct `url`, `baseUrl`, `organizationName`, `projectName`
 - [ ] `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'`
@@ -403,6 +414,7 @@ The workflow will automatically build all locales and deploy.
 
 | Issue | Solution |
 |-------|----------|
+| **Workflow never runs** | Check `branches: [main]` matches your default branch. Use `[master]` if repo uses master. Run `git branch --show-current` to verify |
 | **Build fails on Node version** | Ensure `node-version: 20` in deploy.yml (Docusaurus 3.9+ dropped Node 18 support) |
 | **404 on all pages** | Check `baseUrl` has BOTH leading AND trailing slashes: `'/<repo>/'` |
 | **404 on homepage** | Create `src/pages/index.js` with redirect using `useBaseUrl()` |
@@ -410,6 +422,7 @@ The workflow will automatically build all locales and deploy.
 | **404 on /ur/ locale** | Create `i18n/ur/` folder with translated docs and theme files |
 | **Deprecation warnings** | Move `onBrokenMarkdownLinks` to `markdown.hooks` (not root config) |
 | **Memory errors (i18n builds)** | Set `NODE_OPTIONS=--max-old-space-size=4096` (essential for multi-locale) |
+| **Old content after push** | Workflow triggered on wrong branch. Verify `branches:` in deploy.yml matches your default branch |
 
 ### Build Fails
 

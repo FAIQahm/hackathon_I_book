@@ -1,11 +1,23 @@
 #!/bin/bash
 # GitHub Pages Deploy Setup Script
-# Usage: ./setup.sh <organization> <repository>
+# Usage: ./setup.sh <organization> <repository> [branch]
 
 set -e
 
-ORG="${1:?Usage: $0 <organization> <repository>}"
-REPO="${2:?Usage: $0 <organization> <repository>}"
+ORG="${1:?Usage: $0 <organization> <repository> [branch]}"
+REPO="${2:?Usage: $0 <organization> <repository> [branch]}"
+
+# Auto-detect branch if not provided
+if [ -n "$3" ]; then
+    BRANCH="$3"
+elif git rev-parse --git-dir > /dev/null 2>&1; then
+    BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
+    if [ -z "$BRANCH" ]; then
+        BRANCH="main"
+    fi
+else
+    BRANCH="main"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
@@ -13,13 +25,14 @@ SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 echo "🚀 Setting up GitHub Pages deployment..."
 echo "   Organization: $ORG"
 echo "   Repository: $REPO"
+echo "   Branch: $BRANCH"
 echo ""
 
-# Create workflow directory and copy deploy.yml
+# Create workflow directory and copy deploy.yml with branch substitution
 mkdir -p .github/workflows
-sed -e "s/<organization>/$ORG/g" -e "s/<repository>/$REPO/g" \
+sed -e "s/<organization>/$ORG/g" -e "s/<repository>/$REPO/g" -e "s/branches: \[main\]/branches: [$BRANCH]/g" \
     "$SKILL_DIR/assets/deploy.yml" > .github/workflows/deploy.yml
-echo "✅ Created .github/workflows/deploy.yml (Node.js 20)"
+echo "✅ Created .github/workflows/deploy.yml (Node.js 20, branch: $BRANCH)"
 
 # Create homepage redirect with useBaseUrl
 mkdir -p src/pages
@@ -108,8 +121,9 @@ echo "📋 Next steps:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  1. Update docusaurus.config.js with the values above"
 echo "  2. ⚠️  CRITICAL: baseUrl MUST have BOTH leading AND trailing slashes: '/$REPO/'"
-echo "  3. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions"
-echo "  4. Push to main/master branch to trigger deployment"
+echo "  3. ⚠️  Verify deploy.yml branches: [$BRANCH] matches your default branch"
+echo "  4. Enable GitHub Pages: Settings → Pages → Source: GitHub Actions"
+echo "  5. Push to $BRANCH branch to trigger deployment"
 echo ""
 echo "🔗 Your site will be at: https://$ORG.github.io/$REPO/"
 echo "🔗 Urdu version at: https://$ORG.github.io/$REPO/ur/"
