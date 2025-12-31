@@ -1,0 +1,555 @@
+openapi: 3.1.0
+info:
+  title: Authentication & Personalization API
+  description: |
+    REST API for user authentication and preference management.
+    Uses Better-Auth for secure authentication with email/password.
+  version: 1.0.0
+  contact:
+    name: Physical AI Book Team
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Auth
+    description: Authentication endpoints (register, login, logout)
+  - name: Password
+    description: Password management (reset request, confirm)
+  - name: Preferences
+    description: User preference management
+  - name: Profile
+    description: User profile management
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      description: |
+        Create a new user account with email and password.
+        Account is active immediately (no email verification required).
+        Returns auth token for immediate login.
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: "user@example.com"
+              password: "SecurePass123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input (weak password, invalid email)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                weak_password:
+                  value:
+                    error: "validation_error"
+                    message: "Password must be at least 8 characters with 1 uppercase and 1 number"
+                    code: "WEAK_PASSWORD"
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate user
+      description: |
+        Login with email and password.
+        Returns JWT token in HttpOnly cookie and response body.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '423':
+          description: Account locked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "account_locked"
+                message: "Account locked due to too many failed attempts. Try again in 12 minutes."
+                code: "ACCOUNT_LOCKED"
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: End user session
+      description: Terminate the current session and clear auth cookie
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Not authenticated
+
+  /auth/me:
+    get:
+      tags:
+        - Profile
+      summary: Get current user
+      description: Returns the currently authenticated user's profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authenticated
+
+  /auth/password/reset-request:
+    post:
+      tags:
+        - Password
+      summary: Request password reset
+      description: |
+        Send password reset email with secure link.
+        Email delivered within 2 minutes (per SC-026).
+        Link expires after 24 hours.
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Reset email sent (always returns success to prevent email enumeration)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: "If an account exists with this email, a reset link has been sent"
+                success: true
+
+  /auth/password/reset-confirm:
+    post:
+      tags:
+        - Password
+      summary: Confirm password reset
+      description: Set new password using reset token from email
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "invalid_token"
+                message: "Reset link has expired. Please request a new one."
+                code: "TOKEN_EXPIRED"
+
+  /preferences/onboarding:
+    post:
+      tags:
+        - Preferences
+      summary: Submit onboarding preferences
+      description: |
+        Submit all 10 onboarding questions at once.
+        Marks user's onboarding as complete.
+      operationId: submitOnboarding
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingSubmission'
+            example:
+              preferences:
+                technical_background: "intermediate"
+                domain_knowledge: "some"
+                learning_goal: "skill_enhancement"
+                preferred_depth: "balanced"
+                code_examples: "very_important"
+                time_commitment: "2_to_5_hours"
+                focus_area: "ros2"
+                language_preference: "english"
+                prior_ai_experience: "learning"
+                notification_preference: "yes"
+      responses:
+        '200':
+          description: Preferences saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '400':
+          description: Invalid preferences
+        '401':
+          description: Not authenticated
+
+  /preferences:
+    get:
+      tags:
+        - Preferences
+      summary: Get user preferences
+      description: |
+        Retrieve all preferences for the authenticated user.
+        Cached responses return within 1 second (per SC-030).
+      operationId: getPreferences
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '401':
+          description: Not authenticated
+
+    patch:
+      tags:
+        - Preferences
+      summary: Update preferences
+      description: Update one or more preference values
+      operationId: updatePreferences
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preferences:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PreferenceUpdate'
+            example:
+              preferences:
+                - preference_key: "focus_area"
+                  preference_value: "simulation"
+                - preference_key: "time_commitment"
+                  preference_value: "over_5_hours"
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferencesResponse'
+        '400':
+          description: Invalid preference key or value
+        '401':
+          description: Not authenticated
+
+  /preferences/progress:
+    get:
+      tags:
+        - Preferences
+      summary: Get onboarding progress
+      description: Retrieve partial onboarding answers (for resuming wizard)
+      operationId: getOnboardingProgress
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Onboarding progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingProgress'
+        '401':
+          description: Not authenticated
+        '404':
+          description: No progress found
+
+    put:
+      tags:
+        - Preferences
+      summary: Save onboarding progress
+      description: Save partial answers during onboarding wizard
+      operationId: saveOnboardingProgress
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingProgress'
+      responses:
+        '200':
+          description: Progress saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingProgress'
+        '401':
+          description: Not authenticated
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          minLength: 8
+          description: Password (min 8 chars, 1 uppercase, 1 number)
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    PasswordResetRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    PasswordResetConfirm:
+      type: object
+      required:
+        - token
+        - new_password
+      properties:
+        token:
+          type: string
+          description: Reset token from email link
+        new_password:
+          type: string
+          minLength: 8
+          description: New password
+
+    OnboardingSubmission:
+      type: object
+      required:
+        - preferences
+      properties:
+        preferences:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of preference_key to preference_value
+
+    PreferenceUpdate:
+      type: object
+      required:
+        - preference_key
+        - preference_value
+      properties:
+        preference_key:
+          $ref: '#/components/schemas/PreferenceKey'
+        preference_value:
+          type: string
+
+    PreferenceKey:
+      type: string
+      enum:
+        - technical_background
+        - domain_knowledge
+        - learning_goal
+        - preferred_depth
+        - code_examples
+        - time_commitment
+        - focus_area
+        - language_preference
+        - prior_ai_experience
+        - notification_preference
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        account_status:
+          type: string
+          enum: [active, locked, suspended]
+        onboarding_complete:
+          type: boolean
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserResponse'
+        access_token:
+          type: string
+          description: JWT access token
+        token_type:
+          type: string
+          default: "bearer"
+        expires_in:
+          type: integer
+          description: Token expiry in seconds
+
+    PreferenceResponse:
+      type: object
+      properties:
+        preference_key:
+          $ref: '#/components/schemas/PreferenceKey'
+        preference_value:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    UserPreferencesResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreferenceResponse'
+        onboarding_complete:
+          type: boolean
+
+    OnboardingProgress:
+      type: object
+      properties:
+        current_step:
+          type: integer
+          minimum: 1
+          maximum: 3
+        answers:
+          type: object
+          additionalProperties:
+            type: string
+        last_updated:
+          type: string
+          format: date-time
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        success:
+          type: boolean
+          default: true
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session

@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chapter Content Schema",
+  "description": "Schema for validating chapter MDX frontmatter and structure, including personalization metadata",
+  "type": "object",
+  "required": ["id", "title", "description", "sidebar_position", "primary_topic", "difficulty_range"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^chapter-[1-3]$",
+      "description": "Unique chapter identifier"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 100,
+      "description": "Chapter display title"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 50,
+      "maxLength": 200,
+      "description": "SEO meta description"
+    },
+    "sidebar_position": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "Navigation order"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 3,
+      "maxItems": 10,
+      "description": "SEO keywords"
+    },
+    "primary_topic": {
+      "type": "string",
+      "enum": ["ros2", "simulation", "vision", "ml"],
+      "description": "Primary topic for personalization recommendations (consumed by 004-personalization)"
+    },
+    "difficulty_range": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Minimum difficulty level in chapter"
+        },
+        "max": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Maximum difficulty level in chapter"
+        }
+      },
+      "description": "Difficulty range covered by chapter content"
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/section"
+      },
+      "description": "Section-level metadata for personalization (optional, can be auto-extracted)"
+    }
+  },
+  "definitions": {
+    "section": {
+      "type": "object",
+      "required": ["id", "difficulty", "content_types"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Section anchor/heading ID"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Section difficulty level for personalization filtering"
+        },
+        "content_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["theory", "code", "practical", "math", "diagram"]
+          },
+          "minItems": 1,
+          "description": "Types of content in section (for hiding math blocks, etc.)"
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ros2", "simulation", "vision", "ml", "fundamentals"]
+          },
+          "description": "Topics covered in section for recommendations"
+        },
+        "requires_primer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this section needs a Concept Primer for beginners"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
