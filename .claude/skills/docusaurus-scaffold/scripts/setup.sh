@@ -2,7 +2,7 @@
 # =============================================================================
 # Docusaurus Scaffold Setup Script
 # Scaffold a Docusaurus project for the Physical AI textbook
-# Version: 1.1.0
+# Version: 1.2.0
 # Agent: BookArchitect
 # =============================================================================
 
@@ -146,7 +146,7 @@ done
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📚 Docusaurus Scaffold v1.1.0"
+echo "📚 Docusaurus Scaffold v1.2.0"
 echo "   Agent: BookArchitect"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

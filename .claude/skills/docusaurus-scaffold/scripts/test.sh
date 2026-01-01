@@ -2,7 +2,7 @@
 # =============================================================================
 # Docusaurus Scaffold Test Script
 # Tests the skill functionality in an isolated directory
-# Version: 1.1.0
+# Version: 1.2.0
 # =============================================================================
 
 set -e

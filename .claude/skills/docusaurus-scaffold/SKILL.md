@@ -3,7 +3,7 @@ name: docusaurus-scaffold
 description: |
   Scaffold and initialize a Docusaurus project with the specific structure for the Physical AI textbook.
   Agent: BookArchitect
-version: 1.1.0
+version: 1.2.0
 inputs:
   site_title:
     description: Title for the Docusaurus site
@@ -339,6 +339,65 @@ npm run deploy
 - [ ] `npm run build` completes successfully
 - [ ] Locale switcher appears in navbar
 
+## Automated Testing
+
+Run the test suite to validate skill functionality:
+
+```bash
+# Run all tests
+.claude/skills/docusaurus-scaffold/scripts/test.sh
+```
+
+### Test Suite (18 assertions)
+
+| Test | Description | Validates |
+|------|-------------|-----------|
+| 1 | --help flag works | CLI help output |
+| 2 | package.json created | Basic scaffold |
+| 3 | docusaurus.config.js created | Configuration |
+| 4 | sidebars.js created | Sidebar config |
+| 5 | docs/intro.md created | Introduction page |
+| 6 | Chapter 1 with index.md | Chapter structure |
+| 7 | Chapter 2 with index.md | Chapter structure |
+| 8 | Chapter 3 with index.md | Chapter structure |
+| 9 | Urdu navbar.json created | i18n translations |
+| 10 | Urdu intro.md created | i18n content |
+| 11 | RTL styles in custom.css | RTL support |
+| 12 | Homepage redirect configured | Redirect component |
+| 13 | Favicon created | Static assets |
+| 14 | --chapters 5 creates 5 chapters | Custom chapter count |
+| 15 | GitHub Actions workflow created | CI/CD pipeline |
+| 16 | Mermaid in config and package.json | Diagram support |
+| 17 | Chapter template has Mermaid | Diagram examples |
+| 18 | --no-workflow skips workflow | Flag functionality |
+
+### Test Script Features
+
+- **Isolated execution**: Tests run in `/tmp/docusaurus-scaffold-test-$$`
+- **Automatic cleanup**: Directory removed on exit via trap
+- **Color-coded output**: PASS (green), FAIL (red), TEST (blue)
+- **Summary report**: Pass/fail counts with exit code
+
+### Example Output
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 Docusaurus Scaffold Test Suite
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[TEST] Test 1: --help flag works
+[PASS] --help displays usage information
+...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Test Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Passed: 18
+  Failed: 0
+
+✓ All tests passed!
+```
+
 ## Troubleshooting
 
 | Issue | Solution |
@@ -375,6 +434,22 @@ The default scaffold creates these chapters:
 - Skill: `vercel-fastapi-link` - Backend API
 
 ## Changelog
+
+### v1.2.0 (2026-01-02)
+**Test Suite & Bug Fixes**
+
+- Add comprehensive test suite (`scripts/test.sh`) with 18 assertions
+- Tests run in isolated `/tmp` directory with automatic cleanup
+- Color-coded test output with pass/fail summary
+- **Bug fixes discovered during testing:**
+  - Fix bash counter increment syntax for `set -e` compatibility
+    - Changed `((PASSED++))` to `PASSED=$((PASSED + 1))`
+    - Prevents script exit when incrementing from 0
+  - Fix test cleanup to properly remove `.github` directory
+    - Glob pattern `*` doesn't match dot-prefix directories
+    - Use `rm -rf "$DIR"` instead of `rm -rf "$DIR"/*`
+
+---
 
 ### v1.1.0 (2026-01-01)
 **Enhanced Deployment & Diagrams**
