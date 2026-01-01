@@ -3,7 +3,7 @@ name: vercel-fastapi-link
 description: |
   Configure FastAPI for Vercel deployment.
   Bundled Resources: Includes 'vercel.json', CORSMiddleware, Python logging, Pydantic models, and personalization endpoints.
-version: 1.3.0
+version: 1.4.0
 inputs:
   github_pages_url:
     description: Your GitHub Pages URL for CORS configuration
@@ -68,6 +68,8 @@ Configure FastAPI for Vercel serverless deployment with CORS support for GitHub 
 | `--skip-vercel-json` | Don't create vercel.json | off |
 | `--skip-main` | Don't create main.py template | off |
 | `--test` | Auto-test setup (starts server, hits /health) | off |
+| `--deploy` | Deploy to Vercel after setup (agent-driven) | off |
+| `--prod` | Deploy to production (use with --deploy) | off |
 | `-h, --help` | Show help message | - |
 
 ## What It Does
@@ -580,6 +582,36 @@ EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
 | `LOG_LEVEL` | Logging verbosity: DEBUG, INFO, WARNING, ERROR | Vercel Dashboard |
 
 ## Changelog
+
+### v1.4.0 (2026-01-01)
+**Agent-Driven Deployment**
+
+Added `--deploy` flag for automated Vercel deployment:
+
+- **New Flags:**
+  - `--deploy` - Deploy to Vercel after setup (requires vercel CLI)
+  - `--prod` - Deploy to production environment (use with --deploy)
+
+- **Deployment Features:**
+  - Auto-installs Vercel CLI if not found
+  - Supports `VERCEL_TOKEN` env var for non-interactive deployment
+  - Extracts and displays deployment URL
+  - Auto-tests deployed /health endpoint
+  - Shows API docs and health check URLs
+
+- **Usage:**
+  ```bash
+  # Preview deployment
+  .claude/skills/vercel-fastapi-link/scripts/setup.sh --deploy
+
+  # Production deployment
+  .claude/skills/vercel-fastapi-link/scripts/setup.sh --deploy --prod
+
+  # With token (for CI/CD or agent use)
+  VERCEL_TOKEN=xxx .claude/skills/vercel-fastapi-link/scripts/setup.sh --deploy --prod
+  ```
+
+---
 
 ### v1.3.0 (2026-01-01)
 **Personalization Endpoints**
