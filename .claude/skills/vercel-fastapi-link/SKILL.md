@@ -3,13 +3,18 @@ name: vercel-fastapi-link
 description: |
   Configure FastAPI for Vercel deployment.
   Bundled Resources: Includes the 'vercel.json' configuration template and the CORSMiddleware Python boilerplate to allow requests from GitHub Pages.
-version: 1.0.0
+version: 1.1.0
 inputs:
   github_pages_url:
     description: Your GitHub Pages URL for CORS configuration
     required: false
     default: "https://faiqahm.github.io"
     example: "https://username.github.io"
+  extra_origins:
+    description: Additional CORS origins (comma-separated)
+    required: false
+    default: ""
+    example: "https://staging.example.com,https://preview.example.com"
   api_entry:
     description: Path to FastAPI main.py file
     required: false
@@ -18,6 +23,10 @@ inputs:
     description: Project name for API title
     required: false
     default: "Physical AI Book API"
+  python_version:
+    description: Python version for Vercel runtime
+    required: false
+    default: "3.11"
 ---
 
 # Vercel FastAPI Link
@@ -26,10 +35,10 @@ Configure FastAPI for Vercel serverless deployment with CORS support for GitHub 
 
 ## Quick Setup
 
-**Full automated setup (recommended):**
+**Full automated setup with testing (recommended):**
 
 ```bash
-.claude/skills/vercel-fastapi-link/scripts/setup.sh --github-pages https://faiqahm.github.io
+.claude/skills/vercel-fastapi-link/scripts/setup.sh --github-pages https://faiqahm.github.io --test
 ```
 
 **Basic setup:**
@@ -38,13 +47,13 @@ Configure FastAPI for Vercel serverless deployment with CORS support for GitHub 
 .claude/skills/vercel-fastapi-link/scripts/setup.sh
 ```
 
-**Custom configuration:**
+**With multiple CORS origins:**
 
 ```bash
 .claude/skills/vercel-fastapi-link/scripts/setup.sh \
-  --github-pages https://your-username.github.io \
-  --api-entry api/main.py \
-  --project-name "My API"
+  --github-pages https://faiqahm.github.io \
+  --extra-origins "https://staging.mysite.com,https://preview.mysite.com" \
+  --test
 ```
 
 ## Command Options
@@ -52,40 +61,77 @@ Configure FastAPI for Vercel serverless deployment with CORS support for GitHub 
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--github-pages URL` | GitHub Pages URL for CORS | `https://faiqahm.github.io` |
+| `--extra-origins URLS` | Additional CORS origins (comma-separated) | - |
 | `--api-entry PATH` | Path to FastAPI main.py | `api/main.py` |
 | `--project-name NAME` | API project name | `Physical AI Book API` |
+| `--python-version VER` | Python version for Vercel | `3.11` |
 | `--skip-vercel-json` | Don't create vercel.json | off |
 | `--skip-main` | Don't create main.py template | off |
+| `--test` | Auto-test setup (starts server, hits /health) | off |
 | `-h, --help` | Show help message | - |
 
 ## What It Does
 
-### 1. Creates `vercel.json`
+### 1. Creates `runtime.txt`
+Specifies Python version for Vercel deployment (e.g., `python-3.11`)
+
+### 2. Creates `.env.example` and `.env`
+Environment variable templates with:
+- `GITHUB_PAGES_URL` - Primary CORS origin
+- `EXTRA_CORS_ORIGINS` - Additional origins (comma-separated)
+- Placeholders for database, auth, and API config
+
+### 3. Creates `vercel.json`
 Configures Vercel to:
 - Use `@vercel/python` runtime
 - Route `/api/*` requests to FastAPI
 - Expose `/docs`, `/health`, and `/openapi.json`
 
-### 2. Creates `api/main.py`
+### 4. Creates `api/main.py`
 FastAPI application with:
-- CORS middleware configured for GitHub Pages
+- CORS middleware configured for GitHub Pages + extra origins
+- Dynamic CORS from `EXTRA_CORS_ORIGINS` env var
 - Health check endpoint at `/health`
 - OpenAPI docs at `/docs`
 - Example API routes
 
-### 3. CORS Configuration
-Allows cross-origin requests from:
-- `http://localhost:3000` (local Docusaurus)
-- `http://localhost:8000` (local FastAPI)
-- Your GitHub Pages URL (production)
+### 5. Auto-Test (--test flag)
+When `--test` is provided:
+- Starts uvicorn on port 8765
+- Hits `/health` endpoint
+- Reports success/failure
+- Catches import errors immediately
 
 ---
 
 ## Bundled Resources
 
-### 1. Vercel Configuration
+### 1. Runtime Configuration
 
-**File**: `vercel.json` (project root)
+**File**: `runtime.txt`
+
+```
+python-3.11
+```
+
+### 2. Environment Template
+
+**File**: `.env.example`
+
+```bash
+# GitHub Pages URL for CORS (required for production)
+GITHUB_PAGES_URL=https://faiqahm.github.io
+
+# Additional allowed origins (comma-separated, optional)
+# EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
+
+# Database (if needed)
+# DATABASE_URL=postgresql://user:pass@host:5432/dbname
+```
+
+### 3. Vercel Configuration
+
+**File**: `vercel.json`
 
 ```json
 {
@@ -97,41 +143,36 @@ Allows cross-origin requests from:
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/health",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/docs",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/openapi.json",
-      "dest": "api/main.py"
-    }
+    { "src": "/api/(.*)", "dest": "api/main.py" },
+    { "src": "/health", "dest": "api/main.py" },
+    { "src": "/docs", "dest": "api/main.py" },
+    { "src": "/openapi.json", "dest": "api/main.py" }
   ]
 }
 ```
 
-### 2. CORS Middleware
+### 4. CORS Middleware
 
 **File**: `api/main.py` (CORS section)
 
 ```python
-from fastapi.middleware.cors import CORSMiddleware
-
-# GitHub Pages URL from environment
+# Get GitHub Pages URL from environment or use default
 GITHUB_PAGES_URL = os.getenv("GITHUB_PAGES_URL", "https://faiqahm.github.io")
 
+# Base allowed origins
 allowed_origins = [
     "http://localhost:3000",      # Local Docusaurus dev
     "http://localhost:8000",      # Local FastAPI dev
     GITHUB_PAGES_URL,             # Production GitHub Pages
 ]
+
+# Add extra origins from environment variable (comma-separated)
+extra_origins_env = os.getenv("EXTRA_CORS_ORIGINS", "")
+if extra_origins_env:
+    for origin in extra_origins_env.split(","):
+        origin = origin.strip()
+        if origin and origin not in allowed_origins:
+            allowed_origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,32 +184,40 @@ app.add_middleware(
 )
 ```
 
-### 3. Input Variables
+### 5. Input Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `github_pages_url` | No | `https://faiqahm.github.io` | Frontend URL for CORS |
+| `github_pages_url` | No | `https://faiqahm.github.io` | Primary frontend URL |
+| `extra_origins` | No | - | Additional CORS origins |
 | `api_entry` | No | `api/main.py` | FastAPI entry point |
 | `project_name` | No | `Physical AI Book API` | API title |
+| `python_version` | No | `3.11` | Python version for Vercel |
 
 ## Usage Instructions
 
-### Step 1: Run Setup
+### Step 1: Run Setup with Test
 
 ```bash
-.claude/skills/vercel-fastapi-link/scripts/setup.sh --github-pages https://your-username.github.io
+.claude/skills/vercel-fastapi-link/scripts/setup.sh --test
 ```
 
-### Step 2: Install Dependencies
+### Step 2: Verify Created Files
 
-Create `requirements.txt`:
-
-```txt
-fastapi>=0.100.0
-uvicorn>=0.23.0
+```
+project/
+├── api/
+│   ├── __init__.py
+│   └── main.py          # FastAPI application
+├── vercel.json          # Vercel configuration
+├── runtime.txt          # Python version
+├── requirements.txt     # Python dependencies
+├── .env.example         # Environment template
+├── .env                 # Local environment (gitignored)
+└── .gitignore           # Updated with .env
 ```
 
-### Step 3: Test Locally
+### Step 3: Test Locally (if --test not used)
 
 ```bash
 # Install dependencies
@@ -191,8 +240,9 @@ npm i -g vercel
 # Deploy
 vercel
 
-# Set environment variable (optional)
+# Set environment variables
 vercel env add GITHUB_PAGES_URL
+vercel env add EXTRA_CORS_ORIGINS  # Optional
 ```
 
 ### Step 5: Update Frontend
@@ -206,27 +256,15 @@ export const API_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:8000';
 ```
 
-## Project Structure
-
-After setup:
-
-```
-project/
-├── api/
-│   ├── __init__.py
-│   └── main.py          # FastAPI application
-├── vercel.json          # Vercel configuration
-├── requirements.txt     # Python dependencies
-└── ...
-```
-
 ## Verification Checklist
 
+- [ ] `runtime.txt` exists with Python version
+- [ ] `.env.example` documents all environment variables
+- [ ] `.env` is gitignored
 - [ ] `vercel.json` exists in project root
 - [ ] `api/main.py` contains FastAPI app with CORS
 - [ ] `requirements.txt` includes fastapi and uvicorn
-- [ ] Local test: `curl http://localhost:8000/health` returns `{"status": "healthy"}`
-- [ ] CORS headers present in response
+- [ ] `--test` flag passes health check
 - [ ] Vercel deployment successful
 - [ ] Frontend can call API without CORS errors
 
@@ -237,35 +275,37 @@ project/
 | **CORS error in browser** | Verify `allowed_origins` includes your GitHub Pages URL |
 | **404 on Vercel** | Check `vercel.json` routes match your endpoints |
 | **Module not found** | Ensure `requirements.txt` is in project root |
+| **Wrong Python version** | Check `runtime.txt` matches your code requirements |
 | **Cold start slow** | Normal for serverless; first request takes longer |
-| **Environment variable not set** | Use `vercel env add GITHUB_PAGES_URL` |
-| **API not accessible** | Check Vercel deployment logs for errors |
+| **Environment variable not set** | Use `vercel env add VARIABLE_NAME` |
+| **--test fails** | Check for import errors in api/main.py |
+| **Multiple origins needed** | Use `--extra-origins` or set `EXTRA_CORS_ORIGINS` env var |
 
 ### Common CORS Issues
 
 **Problem**: `Access-Control-Allow-Origin` header missing
 
-**Solution**: Ensure the exact origin (including protocol and port) is in `allowed_origins`:
+**Solution**: Ensure the exact origin (including protocol) is in `allowed_origins`:
 ```python
-allowed_origins = [
-    "https://username.github.io",  # Must match exactly
-    "https://username.github.io/", # With trailing slash too
-]
+# In Vercel Dashboard > Settings > Environment Variables:
+GITHUB_PAGES_URL=https://username.github.io
+EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
 ```
 
-### Vercel Deployment Logs
+### Testing the --test Flag
 
 ```bash
-# View deployment logs
-vercel logs <deployment-url>
+# Run with test
+.claude/skills/vercel-fastapi-link/scripts/setup.sh --test
 
-# View function logs
-vercel logs <deployment-url> --follow
+# Expected output:
+# ✓ Health check passed: {"status":"healthy","service":"physical-ai-book-api"}
+# ✓ All tests passed! Your API is ready.
 ```
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.9+ (default: 3.11)
 - FastAPI 0.100.0+
 - Vercel account
 - Vercel CLI (`npm i -g vercel`)
@@ -274,7 +314,8 @@ vercel logs <deployment-url> --follow
 
 | Variable | Description | Where to Set |
 |----------|-------------|--------------|
-| `GITHUB_PAGES_URL` | Frontend URL for CORS | Vercel Dashboard → Settings → Environment Variables |
+| `GITHUB_PAGES_URL` | Primary frontend URL for CORS | Vercel Dashboard |
+| `EXTRA_CORS_ORIGINS` | Additional origins (comma-separated) | Vercel Dashboard |
 
 ## Related
 
