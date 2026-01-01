@@ -1,0 +1,7 @@
+# FastAPI and dependencies
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+
+# Optional: Add more dependencies as needed
+# python-dotenv>=1.0.0

@@ -2,8 +2,8 @@
 name: vercel-fastapi-link
 description: |
   Configure FastAPI for Vercel deployment.
-  Bundled Resources: Includes the 'vercel.json' configuration template and the CORSMiddleware Python boilerplate to allow requests from GitHub Pages.
-version: 1.1.0
+  Bundled Resources: Includes 'vercel.json', CORSMiddleware, Python logging setup, and Pydantic model examples.
+version: 1.2.0
 inputs:
   github_pages_url:
     description: Your GitHub Pages URL for CORS configuration
@@ -89,11 +89,13 @@ Configures Vercel to:
 
 ### 4. Creates `api/main.py`
 FastAPI application with:
+- **Logging setup** for Vercel log debugging (configurable via `LOG_LEVEL` env var)
+- **Pydantic models** for request/response validation and OpenAPI schema generation
 - CORS middleware configured for GitHub Pages + extra origins
 - Dynamic CORS from `EXTRA_CORS_ORIGINS` env var
 - Health check endpoint at `/health`
 - OpenAPI docs at `/docs`
-- Example API routes
+- Example API routes with proper typing
 
 ### 5. Auto-Test (--test flag)
 When `--test` is provided:
@@ -125,6 +127,10 @@ GITHUB_PAGES_URL=https://faiqahm.github.io
 # Additional allowed origins (comma-separated, optional)
 # EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
 
+# Logging Configuration
+# LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR
+# Set to DEBUG for verbose output when debugging with Vercel logs
+
 # Database (if needed)
 # DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
@@ -151,7 +157,75 @@ GITHUB_PAGES_URL=https://faiqahm.github.io
 }
 ```
 
-### 4. CORS Middleware
+### 4. Logging Configuration
+
+**File**: `api/main.py` (Logging section)
+
+The template includes Python's standard logging configured for Vercel. Agents can read Vercel logs to debug issues.
+
+```python
+import logging
+
+# Configure logging so agents can read Vercel logs for debugging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("physical-ai-book-api")
+
+# Adjust log level from environment (DEBUG, INFO, WARNING, ERROR)
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logger.setLevel(getattr(logging, log_level, logging.INFO))
+
+# Usage in endpoints:
+logger.info(f"Fetching chapter with id={chapter_id}")
+logger.warning(f"Chapter not found: id={chapter_id}")
+logger.error(f"Unhandled exception: {exc}", exc_info=True)
+```
+
+### 5. Pydantic Models
+
+**File**: `api/main.py` (Models section)
+
+The template includes Pydantic models for request/response validation. This defines the "style" of data exchanged between frontend and backend.
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, List
+
+class HealthResponse(BaseModel):
+    """Health check response model."""
+    status: str = Field(..., example="healthy")
+    service: str = Field(..., example="physical-ai-book-api")
+    timestamp: str = Field(..., example="2024-01-01T12:00:00Z")
+
+class ChapterSummary(BaseModel):
+    """Summary of a chapter for listing."""
+    id: int = Field(..., example=1)
+    title: str = Field(..., example="Introduction to Physical AI")
+    slug: str = Field(..., example="intro")
+
+class ChapterDetail(BaseModel):
+    """Full chapter details."""
+    id: int
+    title: str
+    content: str = Field(..., example="Chapter content goes here...")
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class ChapterListResponse(BaseModel):
+    """Response model for chapter listing."""
+    chapters: List[ChapterSummary]
+    total: int = Field(..., example=3)
+
+class ErrorResponse(BaseModel):
+    """Standard error response model."""
+    detail: str = Field(..., example="Resource not found")
+    error_code: Optional[str] = Field(None, example="NOT_FOUND")
+```
+
+### 6. CORS Middleware
 
 **File**: `api/main.py` (CORS section)
 
@@ -184,7 +258,7 @@ app.add_middleware(
 )
 ```
 
-### 5. Input Variables
+### 7. Input Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -316,6 +390,7 @@ EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
 |----------|-------------|--------------|
 | `GITHUB_PAGES_URL` | Primary frontend URL for CORS | Vercel Dashboard |
 | `EXTRA_CORS_ORIGINS` | Additional origins (comma-separated) | Vercel Dashboard |
+| `LOG_LEVEL` | Logging verbosity: DEBUG, INFO, WARNING, ERROR | Vercel Dashboard |
 
 ## Related
 
