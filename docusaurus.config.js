@@ -15,13 +15,7 @@ const config = {
 
   // Broken link detection
   onBrokenLinks: 'throw',
-
-  // Markdown configuration
-  markdown: {
-    hooks: {
-      onBrokenMarkdownLinks: 'warn',
-    },
-  },
+  onBrokenMarkdownLinks: 'warn',
 
   // i18n configuration
   i18n: {
