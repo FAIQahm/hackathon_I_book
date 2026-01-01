@@ -177,6 +177,12 @@ const config = {
   organizationName: 'faiqahm',
   projectName: 'hackathon_I_book',
 
+  // Enable Mermaid for Diagrams
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
   // i18n configuration
   i18n: {
     defaultLocale: 'en',
