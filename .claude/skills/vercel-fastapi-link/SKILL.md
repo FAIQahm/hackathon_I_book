@@ -579,6 +579,113 @@ EXTRA_CORS_ORIGINS=https://staging.example.com,https://preview.example.com
 | `EXTRA_CORS_ORIGINS` | Additional origins (comma-separated) | Vercel Dashboard |
 | `LOG_LEVEL` | Logging verbosity: DEBUG, INFO, WARNING, ERROR | Vercel Dashboard |
 
+## Changelog
+
+### v1.3.0 (2026-01-01)
+**Personalization Endpoints**
+
+Added complete personalization API for educational content:
+
+- **New Pydantic Models:**
+  - `UserPreferences` - Learning preferences (language, difficulty, topics, style, duration)
+  - `UserProfile` - User profile with preferences and timestamps
+  - `Recommendation` - Content recommendation with relevance score
+  - `RecommendationsResponse` - List of recommendations
+  - `LearningPathItem` - Single learning path item with progress tracking
+  - `LearningPath` - Complete personalized learning path
+  - `PersonalizationSettings` - Settings to apply
+  - `PersonalizationApplyResponse` - Apply confirmation
+
+- **New Endpoints:**
+  - `GET /api/personalization/profile` - Get/create user profile
+  - `POST /api/personalization/profile` - Update user profile
+  - `GET /api/personalization/recommendations` - AI-driven content suggestions
+  - `GET /api/personalization/learning-path` - Personalized learning path
+  - `POST /api/personalization/apply` - Save personalization settings
+
+- **Updated Verification Checklist:**
+  - Added curl examples for all personalization endpoints
+  - Added pytest test examples for all endpoints
+  - Organized into Basic Setup, Endpoint Testing, and Deployment sections
+
+- **Note:** Uses in-memory storage for demo; production needs database integration
+
+---
+
+### v1.2.0 (2026-01-01)
+**Logging & Pydantic Models**
+
+Added Python logging and Pydantic model examples:
+
+- **Logging Setup:**
+  - Standard Python logging configured for Vercel log debugging
+  - Configurable via `LOG_LEVEL` environment variable (DEBUG, INFO, WARNING, ERROR)
+  - Format: `%(asctime)s | %(levelname)s | %(name)s | %(message)s`
+  - Agents can read Vercel logs to debug issues
+
+- **Pydantic Models:**
+  - `HealthResponse` - Health check response model
+  - `ChapterSummary` - Summary for chapter listing
+  - `ChapterDetail` - Full chapter details with content
+  - `ChapterListResponse` - Paginated chapter list
+  - `ErrorResponse` - Standard error response with error_code
+
+- **Updated requirements.txt:** Added `pydantic` dependency
+
+---
+
+### v1.1.0 (2026-01-01)
+**Enhanced Setup Script**
+
+Added command-line options and auto-testing:
+
+- **New Command Options:**
+  - `--github-pages URL` - Specify GitHub Pages URL
+  - `--extra-origins URLS` - Additional CORS origins (comma-separated)
+  - `--api-entry PATH` - Custom FastAPI entry point
+  - `--project-name NAME` - API project name
+  - `--python-version VER` - Python version for Vercel
+  - `--skip-vercel-json` - Skip vercel.json creation
+  - `--skip-main` - Skip main.py template creation
+  - `--test` - Auto-test setup (starts server, hits /health)
+  - `-h, --help` - Show help message
+
+- **Auto-Test Feature:**
+  - Starts uvicorn on port 8765
+  - Hits `/health` endpoint
+  - Reports success/failure
+  - Catches import errors immediately
+
+- **Improved Output:** Colored terminal output with progress indicators
+
+---
+
+### v1.0.0 (2026-01-01)
+**Initial Release**
+
+Basic FastAPI + Vercel deployment setup:
+
+- **Files Created:**
+  - `runtime.txt` - Python version specification
+  - `.env.example` - Environment variable template
+  - `.env` - Local environment file (gitignored)
+  - `vercel.json` - Vercel routing configuration
+  - `api/main.py` - FastAPI application
+  - `api/__init__.py` - Python package marker
+
+- **Core Features:**
+  - CORS middleware for GitHub Pages frontend
+  - Dynamic CORS origins from `EXTRA_CORS_ORIGINS` env var
+  - Health check endpoint at `/health`
+  - OpenAPI docs at `/docs`
+  - Example chapter API routes
+
+- **Vercel Configuration:**
+  - `@vercel/python` runtime
+  - Routes for `/api/*`, `/health`, `/docs`, `/openapi.json`
+
+---
+
 ## Related
 
 - [Vercel Python Runtime Docs](https://vercel.com/docs/functions/runtimes/python)
