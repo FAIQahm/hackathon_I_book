@@ -1,12 +1,4 @@
 {
-  "theme.common.skipToMainContent": {
-    "message": "مرکزی مواد پر جائیں",
-    "description": "The skip to content label used for accessibility"
-  },
-  "theme.navbar.mobileLanguageDropdown.label": {
-    "message": "زبانیں",
-    "description": "The label for the mobile language switcher dropdown"
-  },
   "theme.docs.paginator.previous": {
     "message": "پچھلا",
     "description": "The label used to navigate to the previous doc"
@@ -14,5 +6,29 @@
   "theme.docs.paginator.next": {
     "message": "اگلا",
     "description": "The label used to navigate to the next doc"
+  },
+  "theme.docs.sidebar.expandButtonTitle": {
+    "message": "سائیڈبار کھولیں",
+    "description": "The ARIA label and title attribute for expand button of doc sidebar"
+  },
+  "theme.docs.sidebar.collapseButtonTitle": {
+    "message": "سائیڈبار بند کریں",
+    "description": "The ARIA label and title attribute for collapse button of doc sidebar"
+  },
+  "theme.colorToggle.ariaLabel": {
+    "message": "ڈارک اور لائٹ موڈ کے درمیان تبدیل کریں",
+    "description": "The ARIA label for the color mode toggle"
+  },
+  "theme.docs.breadcrumbs.home": {
+    "message": "ہوم",
+    "description": "The ARIA label for the home page in the breadcrumbs"
+  },
+  "theme.NotFound.title": {
+    "message": "صفحہ نہیں ملا",
+    "description": "The title of the 404 page"
+  },
+  "theme.NotFound.p1": {
+    "message": "ہم وہ نہیں ڈھونڈ سکے جو آپ تلاش کر رہے تھے۔",
+    "description": "The first paragraph of the 404 page"
   }
 }
