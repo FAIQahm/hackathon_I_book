@@ -3,7 +3,7 @@ name: docusaurus-scaffold
 description: |
   Scaffold and initialize a Docusaurus project with the specific structure for the Physical AI textbook.
   Agent: BookArchitect
-version: 1.0.0
+version: 1.1.0
 inputs:
   site_title:
     description: Title for the Docusaurus site
@@ -369,6 +369,18 @@ The default scaffold creates these chapters:
 - Skill: `vercel-fastapi-link` - Backend API
 
 ## Changelog
+
+### v1.1.0 (2026-01-01)
+**Enhanced Deployment & Diagrams**
+
+- Add `--deploy` flag for automated GitHub Pages deployment
+- Add `--build` flag to run build after install
+- Bundle GitHub Actions workflow (`.github/workflows/deploy.yml`)
+- Add Mermaid diagram support (`@docusaurus/theme-mermaid`)
+- Add example Mermaid diagrams in chapter templates
+- Add `--no-workflow` and `--no-mermaid` flags to skip features
+
+---
 
 ### v1.0.0 (2026-01-01)
 **Initial Release**

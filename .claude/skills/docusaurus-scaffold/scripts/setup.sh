@@ -2,7 +2,7 @@
 # =============================================================================
 # Docusaurus Scaffold Setup Script
 # Scaffold a Docusaurus project for the Physical AI textbook
-# Version: 1.0.0
+# Version: 1.1.0
 # Agent: BookArchitect
 # =============================================================================
 
@@ -23,6 +23,10 @@ LOCALES="en,ur"
 NUM_CHAPTERS=3
 RUN_INSTALL=false
 RUN_START=false
+RUN_BUILD=false
+RUN_DEPLOY=false
+ADD_WORKFLOW=true
+ADD_MERMAID=true
 
 # =============================================================================
 # Functions
@@ -41,7 +45,11 @@ Options:
   --locales LOCALES      Comma-separated locales (default: $LOCALES)
   --chapters N           Number of chapters (default: $NUM_CHAPTERS)
   --install              Run npm install after setup
+  --build                Run npm run build after install
+  --deploy               Deploy to GitHub Pages after build
   --start                Start dev server (requires --install)
+  --no-workflow          Skip GitHub Actions workflow creation
+  --no-mermaid           Skip Mermaid diagram plugin
   -h, --help             Show this help message
 
 Examples:
@@ -102,6 +110,24 @@ while [[ $# -gt 0 ]]; do
             RUN_START=true
             shift
             ;;
+        --build)
+            RUN_BUILD=true
+            shift
+            ;;
+        --deploy)
+            RUN_DEPLOY=true
+            RUN_BUILD=true
+            RUN_INSTALL=true
+            shift
+            ;;
+        --no-workflow)
+            ADD_WORKFLOW=false
+            shift
+            ;;
+        --no-mermaid)
+            ADD_MERMAID=false
+            shift
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -120,7 +146,7 @@ done
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📚 Docusaurus Scaffold v1.0.0"
+echo "📚 Docusaurus Scaffold v1.1.0"
 echo "   Agent: BookArchitect"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -158,6 +184,7 @@ if [[ ! -f "package.json" ]]; then
   "dependencies": {
     "@docusaurus/core": "^3.6.0",
     "@docusaurus/preset-classic": "^3.6.0",
+    "@docusaurus/theme-mermaid": "^3.6.0",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "prism-react-renderer": "^2.3.0",
@@ -237,6 +264,12 @@ const config = {
   // Broken link detection
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
+
+  // Mermaid diagrams
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
 
   // i18n configuration
   i18n: {
@@ -445,6 +478,16 @@ Explanation of the first key concept.
 ### Concept 2
 
 Explanation of the second key concept.
+
+## Architecture Diagram
+
+\`\`\`mermaid
+graph TD
+    A[Input] --> B[Processing]
+    B --> C[Output]
+    B --> D[Feedback Loop]
+    D --> B
+\`\`\`
 
 ## Hands-On Exercise
 
@@ -687,6 +730,61 @@ EOF
 fi
 
 # =============================================================================
+# Create GitHub Actions Workflow
+# =============================================================================
+
+if [[ "$ADD_WORKFLOW" == true ]]; then
+    log_info "Creating GitHub Actions workflow..."
+    mkdir -p .github/workflows
+
+    cat > .github/workflows/deploy.yml << EOF
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
+EOF
+    log_success "Created .github/workflows/deploy.yml"
+fi
+
+# =============================================================================
 # Install dependencies
 # =============================================================================
 
@@ -716,6 +814,49 @@ if [[ "$RUN_START" == true ]]; then
         echo ""
         npm start
     fi
+fi
+
+# =============================================================================
+# Build
+# =============================================================================
+
+if [[ "$RUN_BUILD" == true ]]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔨 Building Site"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    npm run build
+    log_success "Build complete"
+fi
+
+# =============================================================================
+# Deploy to GitHub Pages
+# =============================================================================
+
+if [[ "$RUN_DEPLOY" == true ]]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚀 Deploying to GitHub Pages"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    # Use docusaurus deploy or gh-pages
+    if command -v gh &> /dev/null; then
+        log_info "Deploying via GitHub Actions..."
+        git add -A
+        git commit -m "chore: deploy to GitHub Pages" || true
+        git push origin master || git push origin main
+        log_success "Pushed to GitHub - Actions will deploy automatically"
+        echo ""
+        echo "🔗 Check deployment: https://github.com/$GITHUB_ORG/$REPO_NAME/actions"
+    else
+        npm run deploy
+        log_success "Deployed to GitHub Pages"
+    fi
+    echo ""
+    echo "🌐 Site URL: https://$GITHUB_ORG.github.io/$REPO_NAME/"
 fi
 
 # =============================================================================
