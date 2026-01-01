@@ -2,8 +2,8 @@
 name: vercel-fastapi-link
 description: |
   Configure FastAPI for Vercel deployment.
-  Bundled Resources: Includes 'vercel.json', CORSMiddleware, Python logging setup, and Pydantic model examples.
-version: 1.2.0
+  Bundled Resources: Includes 'vercel.json', CORSMiddleware, Python logging, Pydantic models, and personalization endpoints.
+version: 1.3.0
 inputs:
   github_pages_url:
     description: Your GitHub Pages URL for CORS configuration
@@ -258,7 +258,127 @@ app.add_middleware(
 )
 ```
 
-### 7. Input Variables
+### 7. Personalization Endpoints
+
+**File**: `api/main.py` (Personalization section)
+
+The template includes personalization endpoints for user data, recommendations, learning paths, and settings.
+
+#### GET /api/personalization/profile
+Get or create user profile for personalization.
+
+```bash
+curl "http://localhost:8000/api/personalization/profile?user_id=user-123"
+```
+
+Response:
+```json
+{
+  "user_id": "user-123",
+  "preferences": {
+    "preferred_language": "en",
+    "difficulty_level": "beginner",
+    "topics_of_interest": [],
+    "learning_style": "visual",
+    "session_duration_minutes": 30
+  },
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+```
+
+#### POST /api/personalization/profile
+Update user profile.
+
+```bash
+curl -X POST "http://localhost:8000/api/personalization/profile" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user-123", "preferences": {"difficulty_level": "intermediate"}}'
+```
+
+#### GET /api/personalization/recommendations
+Get AI-driven content recommendations.
+
+```bash
+curl "http://localhost:8000/api/personalization/recommendations?user_id=user-123"
+```
+
+Response:
+```json
+{
+  "user_id": "user-123",
+  "recommendations": [
+    {
+      "id": "rec-001",
+      "title": "Introduction to Physical AI",
+      "description": "Start your journey into Physical AI and robotics",
+      "chapter_id": 1,
+      "relevance_score": 0.95,
+      "reason": "Recommended starting point for all learners"
+    }
+  ],
+  "generated_at": "2024-01-01T12:00:00Z"
+}
+```
+
+#### GET /api/personalization/learning-path
+Get personalized learning path.
+
+```bash
+curl "http://localhost:8000/api/personalization/learning-path?user_id=user-123"
+```
+
+Response:
+```json
+{
+  "user_id": "user-123",
+  "path_id": "path-user-123",
+  "title": "Physical AI Learning Journey",
+  "items": [
+    {
+      "order": 1,
+      "chapter_id": 1,
+      "title": "Introduction to Physical AI & ROS 2",
+      "status": "not_started",
+      "progress_percent": 0,
+      "estimated_duration_minutes": 60
+    }
+  ],
+  "overall_progress_percent": 0,
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+```
+
+#### POST /api/personalization/apply
+Apply personalization settings.
+
+```bash
+curl -X POST "http://localhost:8000/api/personalization/apply" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user-123",
+    "preferences": {
+      "preferred_language": "en",
+      "difficulty_level": "intermediate",
+      "topics_of_interest": ["robotics", "ai"],
+      "learning_style": "hands-on"
+    },
+    "notifications_enabled": true,
+    "theme": "dark"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Personalization settings applied successfully for user user-123",
+  "applied_at": "2024-01-01T12:00:00Z"
+}
+```
+
+### 8. Input Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -332,15 +452,82 @@ export const API_URL = process.env.NODE_ENV === 'production'
 
 ## Verification Checklist
 
+### Basic Setup
 - [ ] `runtime.txt` exists with Python version
 - [ ] `.env.example` documents all environment variables
 - [ ] `.env` is gitignored
 - [ ] `vercel.json` exists in project root
 - [ ] `api/main.py` contains FastAPI app with CORS
-- [ ] `requirements.txt` includes fastapi and uvicorn
+- [ ] `requirements.txt` includes fastapi, uvicorn, pydantic
 - [ ] `--test` flag passes health check
+
+### Endpoint Testing (curl)
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Get user profile
+curl "http://localhost:8000/api/personalization/profile?user_id=test-user"
+
+# Get recommendations
+curl "http://localhost:8000/api/personalization/recommendations?user_id=test-user"
+
+# Get learning path
+curl "http://localhost:8000/api/personalization/learning-path?user_id=test-user"
+
+# Apply personalization
+curl -X POST "http://localhost:8000/api/personalization/apply" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"test-user","preferences":{"difficulty_level":"intermediate"},"notifications_enabled":true,"theme":"dark"}'
+```
+
+### Endpoint Testing (pytest)
+```python
+# tests/test_personalization.py
+import pytest
+from fastapi.testclient import TestClient
+from api.main import app
+
+client = TestClient(app)
+
+def test_health():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+
+def test_get_profile():
+    response = client.get("/api/personalization/profile?user_id=test-user")
+    assert response.status_code == 200
+    assert response.json()["user_id"] == "test-user"
+
+def test_get_recommendations():
+    response = client.get("/api/personalization/recommendations?user_id=test-user")
+    assert response.status_code == 200
+    assert "recommendations" in response.json()
+
+def test_get_learning_path():
+    response = client.get("/api/personalization/learning-path?user_id=test-user")
+    assert response.status_code == 200
+    assert "items" in response.json()
+
+def test_apply_personalization():
+    response = client.post(
+        "/api/personalization/apply",
+        json={
+            "user_id": "test-user",
+            "preferences": {"difficulty_level": "intermediate"},
+            "notifications_enabled": True,
+            "theme": "dark"
+        }
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] == True
+```
+
+### Deployment
 - [ ] Vercel deployment successful
 - [ ] Frontend can call API without CORS errors
+- [ ] All personalization endpoints respond correctly
 
 ## Troubleshooting
 
