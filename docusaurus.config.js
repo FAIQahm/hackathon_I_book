@@ -7,9 +7,9 @@ const config = {
   favicon: 'img/favicon.svg',
 
   // GitHub Pages deployment
-  url: 'https://FAIQahm.github.io',
+  url: 'https://faiqahm.github.io',
   baseUrl: '/hackathon_I_book/',
-  organizationName: 'FAIQahm',
+  organizationName: 'faiqahm',
   projectName: 'hackathon_I_book',
   trailingSlash: false,
 
@@ -68,7 +68,7 @@ const config = {
             position: 'right',
           },
           {
-            href: 'https://github.com/FAIQahm/hackathon_I_book',
+            href: 'https://github.com/faiqahm/hackathon_I_book',
             label: 'GitHub',
             position: 'right',
           },
