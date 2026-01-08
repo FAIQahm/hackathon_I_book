@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './styles.module.css';
 
-const API_BASE = 'https://hackathon-i-book.vercel.app';
+const API_BASE = 'https://physical-ai-book-api-sids-projects-87a19a70.vercel.app';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
