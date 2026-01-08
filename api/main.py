@@ -16,6 +16,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+# RAG Dependencies
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Filter, FieldCondition, MatchValue
+    from openai import OpenAI
+    QDRANT_AVAILABLE = True
+except ImportError:
+    QDRANT_AVAILABLE = False
+
 # =============================================================================
 # Logging Configuration
 # =============================================================================
@@ -146,6 +155,40 @@ class PersonalizationApplyResponse(BaseModel):
     success: bool
     message: str
     applied_at: str
+
+
+# =============================================================================
+# RAG Chatbot Models
+# =============================================================================
+
+class ChatMessage(BaseModel):
+    """A single chat message."""
+    role: str = Field(..., example="user")
+    content: str = Field(..., example="What is ROS 2?")
+
+
+class ChatRequest(BaseModel):
+    """Request for chat endpoint."""
+    message: str = Field(..., min_length=1, max_length=500, example="What is Physical AI?")
+    language: Optional[str] = Field(default="en", example="en")
+    chapter: Optional[int] = Field(default=None, example=1)
+    history: Optional[List[ChatMessage]] = Field(default=[], example=[])
+
+
+class Citation(BaseModel):
+    """Citation reference to source material."""
+    chapter: Optional[int] = Field(None, example=1)
+    section: str = Field(..., example="Introduction to ROS 2")
+    source: str = Field(..., example="docs/chapter-1/index.md")
+
+
+class ChatResponse(BaseModel):
+    """Response from chat endpoint."""
+    answer: str = Field(..., example="Physical AI refers to...")
+    citations: List[Citation] = Field(default=[])
+    confidence: float = Field(..., ge=0, le=1, example=0.92)
+    response_time_ms: int = Field(..., example=850)
+    cached: bool = Field(default=False)
 
 
 # =============================================================================
@@ -435,6 +478,251 @@ async def apply_personalization(settings: PersonalizationSettings):
         message=f"Personalization settings applied successfully for user {settings.user_id}",
         applied_at=now,
     )
+
+
+# =============================================================================
+# RAG Chatbot Service
+# =============================================================================
+
+# Initialize RAG clients (lazy loading)
+_qdrant_client = None
+_openai_client = None
+_response_cache: dict = {}  # Simple in-memory cache
+
+QDRANT_COLLECTION = "textbook_chapters"
+EMBEDDING_MODEL = "text-embedding-3-small"
+CHAT_MODEL = "gpt-4o-mini"
+
+SYSTEM_PROMPT = """You are a helpful assistant for the Physical AI Educational Book.
+Your role is to answer questions about Physical AI, ROS 2, Gazebo simulation, and Vision-Language-Action models
+based ONLY on the provided context from the book.
+
+Rules:
+1. Only answer questions using the provided context from the book
+2. If the context doesn't contain relevant information, say "I don't have information about that in the book content"
+3. Always cite the chapter and section when providing information
+4. Keep answers concise but comprehensive
+5. For code questions, explain what the code does in plain language
+6. Never make up or hallucinate information not in the context"""
+
+
+def get_qdrant_client():
+    """Get or create Qdrant client."""
+    global _qdrant_client
+    if _qdrant_client is None and QDRANT_AVAILABLE:
+        qdrant_url = os.getenv("QDRANT_URL")
+        qdrant_key = os.getenv("QDRANT_API_KEY")
+        if qdrant_url and qdrant_key:
+            _qdrant_client = QdrantClient(url=qdrant_url, api_key=qdrant_key)
+    return _qdrant_client
+
+
+def get_openai_client():
+    """Get or create OpenAI client."""
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
+
+
+def embed_query(text: str) -> list:
+    """Generate embedding for query text."""
+    client = get_openai_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="OpenAI service unavailable")
+    response = client.embeddings.create(input=text[:8000], model=EMBEDDING_MODEL)
+    return response.data[0].embedding
+
+
+def retrieve_context(query: str, language: str = "en", chapter: int = None, top_k: int = 5) -> list:
+    """Retrieve relevant chunks from Qdrant."""
+    client = get_qdrant_client()
+    if not client:
+        logger.warning("Qdrant unavailable, returning empty context")
+        return []
+
+    query_vector = embed_query(query)
+
+    # Build filter
+    filter_conditions = []
+    if language:
+        filter_conditions.append(FieldCondition(key="language", match=MatchValue(value=language)))
+    if chapter is not None:
+        filter_conditions.append(FieldCondition(key="chapter", match=MatchValue(value=chapter)))
+
+    query_filter = Filter(must=filter_conditions) if filter_conditions else None
+
+    try:
+        results = client.search(
+            collection_name=QDRANT_COLLECTION,
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=top_k
+        )
+        return [
+            {
+                "content": hit.payload.get("content", ""),
+                "section": hit.payload.get("section", "Unknown"),
+                "chapter": hit.payload.get("chapter"),
+                "source": hit.payload.get("source", ""),
+                "score": hit.score
+            }
+            for hit in results
+        ]
+    except Exception as e:
+        logger.error(f"Qdrant search error: {e}")
+        return []
+
+
+def generate_response(query: str, context: list, history: list = None) -> tuple:
+    """Generate response using OpenAI."""
+    client = get_openai_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="OpenAI service unavailable")
+
+    # Format context
+    context_text = "\n\n".join([
+        f"[Chapter {c.get('chapter', '?')}: {c.get('section', 'Unknown')}]\n{c.get('content', '')}"
+        for c in context
+    ])
+
+    # Build messages
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    # Add history if provided
+    if history:
+        for msg in history[-6:]:  # Last 3 exchanges
+            messages.append({"role": msg.role, "content": msg.content})
+
+    # Add current query with context
+    user_message = f"""Context from the Physical AI book:
+{context_text}
+
+User question: {query}"""
+
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=messages,
+        max_tokens=1000,
+        temperature=0.3
+    )
+
+    answer = response.choices[0].message.content
+
+    # Calculate confidence based on context relevance
+    avg_score = sum(c.get("score", 0) for c in context) / len(context) if context else 0
+    confidence = min(avg_score, 1.0)
+
+    return answer, confidence
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    RAG Chatbot endpoint - Ask questions about the Physical AI book.
+
+    - Retrieves relevant context from vectorized book content
+    - Generates grounded responses with citations
+    - Supports conversation history for follow-up questions
+    """
+    import time
+    start_time = time.time()
+
+    logger.info(f"Chat request: {request.message[:50]}...")
+
+    # Check cache
+    cache_key = f"{request.message}:{request.language}:{request.chapter}"
+    if cache_key in _response_cache:
+        cached = _response_cache[cache_key]
+        logger.info("Returning cached response")
+        return ChatResponse(
+            answer=cached["answer"],
+            citations=cached["citations"],
+            confidence=cached["confidence"],
+            response_time_ms=int((time.time() - start_time) * 1000),
+            cached=True
+        )
+
+    # Retrieve context
+    context = retrieve_context(
+        request.message,
+        language=request.language,
+        chapter=request.chapter,
+        top_k=5
+    )
+
+    if not context:
+        # No relevant context found
+        return ChatResponse(
+            answer="I don't have information about that in the book content. Please ask a question related to Physical AI, ROS 2, Gazebo simulation, or Vision-Language-Action models.",
+            citations=[],
+            confidence=0.0,
+            response_time_ms=int((time.time() - start_time) * 1000),
+            cached=False
+        )
+
+    # Generate response
+    try:
+        answer, confidence = generate_response(
+            request.message,
+            context,
+            request.history
+        )
+    except Exception as e:
+        logger.error(f"Response generation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate response")
+
+    # Build citations
+    citations = []
+    seen_sections = set()
+    for c in context:
+        section_key = f"{c.get('chapter')}:{c.get('section')}"
+        if section_key not in seen_sections:
+            seen_sections.add(section_key)
+            citations.append(Citation(
+                chapter=c.get("chapter"),
+                section=c.get("section", "Unknown"),
+                source=c.get("source", "")
+            ))
+
+    response_time_ms = int((time.time() - start_time) * 1000)
+
+    # Cache response
+    _response_cache[cache_key] = {
+        "answer": answer,
+        "citations": citations,
+        "confidence": confidence
+    }
+
+    logger.info(f"Chat response generated in {response_time_ms}ms, confidence={confidence:.2f}")
+
+    return ChatResponse(
+        answer=answer,
+        citations=citations,
+        confidence=confidence,
+        response_time_ms=response_time_ms,
+        cached=False
+    )
+
+
+@app.get("/api/chat/health")
+async def chat_health():
+    """Check RAG chatbot service health."""
+    qdrant_ok = get_qdrant_client() is not None
+    openai_ok = get_openai_client() is not None
+
+    status = "healthy" if (qdrant_ok and openai_ok) else "degraded"
+
+    return {
+        "status": status,
+        "qdrant": "connected" if qdrant_ok else "unavailable",
+        "openai": "connected" if openai_ok else "unavailable",
+        "collection": QDRANT_COLLECTION
+    }
 
 
 # =============================================================================
