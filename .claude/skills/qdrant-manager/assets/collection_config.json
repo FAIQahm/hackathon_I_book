@@ -1,0 +1,11 @@
+{
+    "vectors": {
+        "size": 1536,
+        "distance": "Cosine"
+    },
+    "optimizers_config": {
+        "indexing_threshold": 20000
+    },
+    "on_disk_payload": true,
+    "replication_factor": 1
+}

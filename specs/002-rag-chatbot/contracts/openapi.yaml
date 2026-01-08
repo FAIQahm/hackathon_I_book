@@ -1,0 +1,460 @@
+openapi: 3.1.0
+info:
+  title: RAG Chatbot API
+  description: |
+    REST API for the Physical AI Book RAG Chatbot.
+    Provides question answering, conversation history, and health monitoring endpoints.
+  version: 1.0.0
+  contact:
+    name: Physical AI Book Team
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Chat
+    description: Chat and question answering endpoints
+  - name: History
+    description: Conversation history management
+  - name: Health
+    description: Service health and status
+
+paths:
+  /chat:
+    post:
+      tags:
+        - Chat
+      summary: Submit a query and get a response
+      description: |
+        Submit a question about the Physical AI book content.
+        Returns an AI-generated response with citations to source material.
+
+        Performance targets:
+        - p95 latency: <2 seconds
+        - Cached response: <1 second
+      operationId: submitQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+            examples:
+              simple_question:
+                summary: Simple concept question
+                value:
+                  query: "What is Physical AI?"
+                  session_id: "abc123-session-id"
+              with_context:
+                summary: Question with text selection
+                value:
+                  query: "Explain this concept in more detail"
+                  session_id: "abc123-session-id"
+                  selected_text: "ROS 2 uses a distributed architecture"
+                  conversation_id: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                query_too_long:
+                  value:
+                    error: "validation_error"
+                    message: "Query exceeds maximum length of 500 characters"
+                    code: "QUERY_TOO_LONG"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service unavailable (degraded mode)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+
+  /chat/stream:
+    post:
+      tags:
+        - Chat
+      summary: Submit a query with streaming response
+      description: |
+        Submit a question and receive the response as Server-Sent Events.
+        Enables real-time display of the response as it's generated.
+      operationId: submitQueryStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE events with the following types:
+                  - `token`: Incremental response text
+                  - `citation`: Citation reference
+                  - `done`: Stream complete with metadata
+                  - `error`: Error occurred
+
+  /history/{session_id}:
+    get:
+      tags:
+        - History
+      summary: Get conversation history
+      description: |
+        Retrieve the conversation history for a given session.
+        Sessions expire after 30 minutes of inactivity.
+      operationId: getHistory
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Browser session identifier
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Maximum number of messages to return
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Return messages before this message ID (pagination)
+      responses:
+        '200':
+          description: Conversation history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationHistory'
+        '404':
+          description: Session not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - History
+      summary: Clear conversation history
+      description: Delete all conversation history for a session
+      operationId: clearHistory
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: History cleared successfully
+        '404':
+          description: Session not found
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Service health check
+      description: |
+        Returns the health status of the chatbot service and its dependencies.
+        Used for monitoring and alerting.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              examples:
+                healthy:
+                  summary: All services healthy
+                  value:
+                    status: "healthy"
+                    timestamp: "2025-12-30T10:00:00Z"
+                    services:
+                      openai:
+                        status: "healthy"
+                        latency_ms: 150
+                      qdrant:
+                        status: "healthy"
+                        latency_ms: 25
+                      neon:
+                        status: "healthy"
+                        latency_ms: 10
+                degraded:
+                  summary: Partial service failure
+                  value:
+                    status: "degraded"
+                    timestamp: "2025-12-30T10:00:00Z"
+                    services:
+                      openai:
+                        status: "down"
+                        error: "Connection timeout"
+                      qdrant:
+                        status: "healthy"
+                        latency_ms: 30
+                      neon:
+                        status: "healthy"
+                        latency_ms: 12
+
+components:
+  schemas:
+    QueryRequest:
+      type: object
+      required:
+        - query
+        - session_id
+      properties:
+        query:
+          type: string
+          maxLength: 500
+          description: The question to ask about book content
+          example: "What is Physical AI?"
+        session_id:
+          type: string
+          description: Browser session identifier for conversation tracking
+          example: "abc123-session-id"
+        selected_text:
+          type: string
+          maxLength: 1000
+          description: Text selected by user for contextual questions
+          example: "ROS 2 uses a distributed architecture"
+        conversation_id:
+          type: string
+          format: uuid
+          description: Existing conversation to continue (optional)
+
+    QueryResponse:
+      type: object
+      required:
+        - message
+        - conversation_id
+        - cached
+        - degraded_mode
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+        conversation_id:
+          type: string
+          format: uuid
+          description: Conversation ID for follow-up queries
+        cached:
+          type: boolean
+          description: Whether response was served from cache
+        degraded_mode:
+          type: boolean
+          description: Whether response used fallback mechanisms
+        service_status:
+          type: object
+          properties:
+            openai:
+              type: string
+              enum: [healthy, degraded, down]
+            qdrant:
+              type: string
+              enum: [healthy, degraded, down]
+
+    Message:
+      type: object
+      required:
+        - id
+        - role
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          description: Message text content
+        selected_text:
+          type: string
+          description: Text selection context (user messages only)
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Response confidence (assistant messages only)
+        response_time_ms:
+          type: integer
+          description: Generation time in milliseconds
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+          description: Source citations (assistant messages only)
+        cached:
+          type: boolean
+          default: false
+        degraded_mode:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+
+    Citation:
+      type: object
+      required:
+        - chapter_id
+        - section_heading
+        - relevance_score
+      properties:
+        chapter_id:
+          type: string
+          description: Chapter identifier (e.g., "chapter-1")
+          example: "chapter-1"
+        section_heading:
+          type: string
+          description: Section title
+          example: "Introduction to Physical AI"
+        relevance_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Retrieval similarity score
+        excerpt:
+          type: string
+          maxLength: 500
+          description: Source text excerpt
+
+    ConversationHistory:
+      type: object
+      required:
+        - conversation_id
+        - session_id
+        - messages
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        has_more:
+          type: boolean
+          description: Whether more messages exist (pagination)
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+        - services
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+          description: Overall service status
+        timestamp:
+          type: string
+          format: date-time
+        services:
+          type: object
+          properties:
+            openai:
+              $ref: '#/components/schemas/ServiceHealth'
+            qdrant:
+              $ref: '#/components/schemas/ServiceHealth'
+            neon:
+              $ref: '#/components/schemas/ServiceHealth'
+        metrics:
+          type: object
+          properties:
+            requests_total:
+              type: integer
+            cache_hit_rate:
+              type: number
+              format: float
+            avg_response_time_ms:
+              type: number
+              format: float
+
+    ServiceHealth:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, down]
+        latency_ms:
+          type: integer
+          description: Last check latency
+        error:
+          type: string
+          description: Error message if unhealthy
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "validation_error"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Query exceeds maximum length of 500 characters"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "QUERY_TOO_LONG"
+        details:
+          type: object
+          description: Additional error context
+
+  securitySchemes:
+    sessionId:
+      type: apiKey
+      in: header
+      name: X-Session-ID
+      description: Browser session identifier
+
+security: []  # No authentication required per FR-024

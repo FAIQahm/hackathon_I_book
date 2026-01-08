@@ -1,0 +1,14 @@
+{
+  "title": {
+    "message": "فزیکل اے آئی کتاب",
+    "description": "The title in the navbar"
+  },
+  "item.label.Chapters": {
+    "message": "ابواب",
+    "description": "Navbar item with label Chapters"
+  },
+  "item.label.GitHub": {
+    "message": "گٹ ہب",
+    "description": "Navbar item with label GitHub"
+  }
+}
