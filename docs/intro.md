@@ -1,35 +1,31 @@
 ---
 sidebar_position: 1
+slug: /
 ---
 
-# Physical AI Educational Book
+# Welcome to Physical AI
 
-Welcome to the **Physical AI Educational Book** - your comprehensive guide to learning robotics, ROS 2, and AI-powered physical systems.
+Learn how to build intelligent robots that perceive, reason, and act in the physical world.
 
 ## What You'll Learn
 
-| Chapter | Topic |
-|---------|-------|
-| **Chapter 1** | Introduction to Physical AI & ROS 2 |
-| **Chapter 2** | Simulation with Gazebo |
-| **Chapter 3** | Vision-Language-Action Models |
+- **Physical AI Fundamentals** - Understanding embodied intelligence
+- **ROS 2 Development** - Robot Operating System essentials
+- **Simulation** - Testing in Gazebo before real hardware
+- **Vision-Language-Action** - Modern AI models for robotics
 
 ## Prerequisites
 
-- Basic programming knowledge (Python recommended)
-- Familiarity with command line
-- Curiosity about robotics and AI
+- Basic Python programming
+- Linux command line familiarity
+- Enthusiasm for robotics!
 
-## Getting Started
+## How to Use This Book
 
-Select a chapter from the sidebar to begin your journey into Physical AI.
+Each chapter includes:
+- **Learning Objectives** - What you'll achieve
+- **Hands-On Exercises** - Practical coding tasks
+- **Summary** - Key takeaways
+- **Further Reading** - Deep dive resources
 
-## Languages
-
-This book is available in:
-- 🇬🇧 English
-- 🇵🇰 اردو (Urdu)
-
----
-
-*Last updated: December 31, 2025*
+Let's begin your journey into Physical AI!
