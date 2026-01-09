@@ -536,7 +536,7 @@ def embed_query(text: str) -> list:
     return response.data[0].embedding
 
 
-def retrieve_context(query: str, language: str = "en", chapter: int = None, top_k: int = 5) -> list:
+def retrieve_context(query: str, language: str = None, chapter: int = None, top_k: int = 5) -> list:
     """Retrieve relevant chunks from Qdrant."""
     client = get_qdrant_client()
     if not client:
@@ -544,11 +544,13 @@ def retrieve_context(query: str, language: str = "en", chapter: int = None, top_
         return []
 
     query_vector = embed_query(query)
+    logger.info(f"Generated embedding for query: {query[:50]}...")
 
-    # Build filter
+    # Build filter - skip language filter for now (data has inconsistent tags)
     filter_conditions = []
-    if language:
-        filter_conditions.append(FieldCondition(key="language", match=MatchValue(value=language)))
+    # Temporarily disabled language filter due to data issues
+    # if language:
+    #     filter_conditions.append(FieldCondition(key="language", match=MatchValue(value=language)))
     if chapter is not None:
         filter_conditions.append(FieldCondition(key="chapter", match=MatchValue(value=chapter)))
 
