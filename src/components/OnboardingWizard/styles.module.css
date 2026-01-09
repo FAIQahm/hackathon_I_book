@@ -189,13 +189,13 @@
 }
 
 .submitBtn {
-  background: var(--ifm-color-success);
+  background: var(--ifm-color-primary);
   color: white;
   border: none;
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: var(--ifm-color-success-dark);
+  background: var(--ifm-color-primary-dark);
 }
 
 .skipBtn {
