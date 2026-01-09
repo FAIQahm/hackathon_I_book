@@ -555,12 +555,26 @@ def retrieve_context(query: str, language: str = "en", chapter: int = None, top_
     query_filter = Filter(must=filter_conditions) if filter_conditions else None
 
     try:
-        results = client.search(
-            collection_name=QDRANT_COLLECTION,
-            query_vector=query_vector,
-            query_filter=query_filter,
-            limit=top_k
-        )
+        # Try new API first (qdrant-client >= 1.7)
+        try:
+            results = client.query_points(
+                collection_name=QDRANT_COLLECTION,
+                query=query_vector,
+                query_filter=query_filter,
+                limit=top_k
+            )
+            points = results.points
+        except AttributeError:
+            # Fall back to old API
+            results = client.search(
+                collection_name=QDRANT_COLLECTION,
+                query_vector=query_vector,
+                query_filter=query_filter,
+                limit=top_k
+            )
+            points = results
+
+        logger.info(f"Qdrant returned {len(points)} results")
         return [
             {
                 "content": hit.payload.get("content", ""),
@@ -569,10 +583,10 @@ def retrieve_context(query: str, language: str = "en", chapter: int = None, top_
                 "source": hit.payload.get("source", ""),
                 "score": hit.score
             }
-            for hit in results
+            for hit in points
         ]
     except Exception as e:
-        logger.error(f"Qdrant search error: {e}")
+        logger.error(f"Qdrant search error: {e}", exc_info=True)
         return []
 
 
