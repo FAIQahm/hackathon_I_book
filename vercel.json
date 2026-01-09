@@ -3,9 +3,11 @@
   "framework": "docusaurus-2",
   "buildCommand": "npm run build",
   "outputDirectory": "build",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:path*",
       "destination": "/api/main.py"
     },
     {
