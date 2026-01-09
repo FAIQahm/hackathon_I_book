@@ -1,9 +1,18 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
   "builds": [
     {
       "src": "api/main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
   "routes": [
@@ -16,12 +25,15 @@
       "dest": "api/main.py"
     },
     {
-      "src": "/docs",
+      "src": "/openapi.json",
       "dest": "api/main.py"
     },
     {
-      "src": "/openapi.json",
-      "dest": "api/main.py"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
