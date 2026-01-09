@@ -2,8 +2,6 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "cleanUrls": true,
-  "trailingSlash": false,
   "builds": [
     {
       "src": "api/main.py",
@@ -25,6 +23,10 @@
     },
     {
       "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1.html"
     }
   ]
 }
