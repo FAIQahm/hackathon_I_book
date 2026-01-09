@@ -1,14 +1,21 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
+  "version": 2,
   "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "outputDirectory": "build"
+      }
+    },
     {
       "src": "api/main.py",
       "use": "@vercel/python"
     }
   ],
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/main.py" },
-    { "source": "/health", "destination": "/api/main.py" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/main.py" },
+    { "src": "/health", "dest": "/api/main.py" },
+    { "handle": "filesystem" }
   ]
 }
