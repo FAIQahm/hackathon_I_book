@@ -6,9 +6,9 @@ const config = {
   tagline: 'Learn Physical AI, ROS 2, and Robotics',
   favicon: 'img/favicon.svg',
 
-  // GitHub Pages deployment
-  url: 'https://faiqahm.github.io',
-  baseUrl: '/hackathon_I_book/',
+  // Vercel deployment
+  url: 'https://hackathon-i-book.vercel.app',
+  baseUrl: '/',
   organizationName: 'faiqahm',
   projectName: 'hackathon_I_book',
   trailingSlash: false,
