@@ -246,6 +246,63 @@ class AuthMessageResponse(BaseModel):
 
 
 # =============================================================================
+# Personalization Models (rag-personalizer skill integration)
+# =============================================================================
+
+class ProfileDimensions(BaseModel):
+    """10-dimension learner profile from rag-personalizer skill."""
+    learning_style: str = Field(default="reading", example="visual")
+    knowledge_level: str = Field(default="beginner", example="intermediate")
+    learning_pace: str = Field(default="moderate", example="fast")
+    language: str = Field(default="en", example="ur")
+    content_depth: str = Field(default="standard", example="deep-dive")
+    example_preference: str = Field(default="practical", example="code-heavy")
+    difficulty_tolerance: str = Field(default="moderate", example="challenging")
+    interaction_style: str = Field(default="interactive", example="hands-on")
+    time_availability: str = Field(default="moderate", example="extensive")
+    goal_orientation: str = Field(default="understanding", example="application")
+
+
+class LearnerProfile(BaseModel):
+    """Full learner profile with dimensions."""
+    user_id: str
+    dimensions: ProfileDimensions = Field(default_factory=ProfileDimensions)
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class PersonalizedChatRequest(BaseModel):
+    """Request for personalized chat."""
+    message: str = Field(..., min_length=1, max_length=500)
+    user_id: Optional[str] = Field(default=None)
+    history: Optional[List[ChatMessage]] = Field(default=[])
+
+
+class PersonalizedChatResponse(BaseModel):
+    """Response with personalized content."""
+    answer: str
+    personalized: bool = True
+    profile_applied: Optional[ProfileDimensions] = None
+    citations: List[Citation] = Field(default=[])
+    confidence: float = Field(ge=0, le=1)
+    response_time_ms: int
+
+
+class OnboardingQuestion(BaseModel):
+    """Single onboarding question."""
+    id: str
+    dimension: str
+    question: str
+    options: List[dict]
+
+
+class OnboardingResponse(BaseModel):
+    """Response to onboarding questions."""
+    user_id: str
+    answers: dict = Field(..., example={"learning_style": "visual"})
+
+
+# =============================================================================
 # App Configuration
 # =============================================================================
 
@@ -1131,6 +1188,363 @@ async def auth_health():
         "jwt_configured": bool(JWT_SECRET),
         "bcrypt_available": AUTH_AVAILABLE,
         "users_count": len(_users_db)
+    }
+
+
+# =============================================================================
+# Personalization Service (rag-personalizer skill)
+# =============================================================================
+
+# In-memory learner profiles storage
+_learner_profiles: dict = {}
+
+# Valid dimension values (from rag-personalizer skill)
+VALID_DIMENSIONS = {
+    "learning_style": ["visual", "auditory", "kinesthetic", "reading"],
+    "knowledge_level": ["beginner", "intermediate", "advanced"],
+    "learning_pace": ["slow", "moderate", "fast"],
+    "language": ["en", "ur"],
+    "content_depth": ["overview", "standard", "deep-dive"],
+    "example_preference": ["theoretical", "practical", "code-heavy"],
+    "difficulty_tolerance": ["easy", "moderate", "challenging"],
+    "interaction_style": ["passive", "interactive", "hands-on"],
+    "time_availability": ["limited", "moderate", "extensive"],
+    "goal_orientation": ["certification", "understanding", "application"]
+}
+
+# Dimension adaptation instructions (from rag-personalizer prompts.json)
+DIMENSION_INSTRUCTIONS = {
+    "learning_style": {
+        "visual": "Add diagrams, tables, and visual representations. Use formatting to illustrate relationships.",
+        "auditory": "Write in a conversational tone as if explaining verbally.",
+        "kinesthetic": "Include hands-on exercises and step-by-step tutorials.",
+        "reading": "Use clear paragraph structure with headers and bullet points."
+    },
+    "knowledge_level": {
+        "beginner": "Define all technical terms. Use simple analogies. Avoid jargon.",
+        "intermediate": "Assume familiarity with basics. Focus on application.",
+        "advanced": "Skip foundational explanations. Discuss edge cases and best practices."
+    },
+    "content_depth": {
+        "overview": "Provide high-level summary. Focus on key takeaways.",
+        "standard": "Balance breadth and depth. Include explanations and examples.",
+        "deep-dive": "Include technical internals, code examples, and implementation details."
+    },
+    "example_preference": {
+        "theoretical": "Use conceptual examples and focus on principles.",
+        "practical": "Use real-world examples and show practical applications.",
+        "code-heavy": "Include code snippets and working implementations."
+    }
+}
+
+# 10 Onboarding Questions
+ONBOARDING_QUESTIONS = [
+    {
+        "id": "q1", "dimension": "learning_style",
+        "question": "How do you learn best?",
+        "options": [
+            {"value": "visual", "label": "Through diagrams and visuals"},
+            {"value": "auditory", "label": "By listening to explanations"},
+            {"value": "kinesthetic", "label": "By doing hands-on practice"},
+            {"value": "reading", "label": "By reading detailed text"}
+        ]
+    },
+    {
+        "id": "q2", "dimension": "knowledge_level",
+        "question": "What is your experience with Physical AI and robotics?",
+        "options": [
+            {"value": "beginner", "label": "I'm new to this field"},
+            {"value": "intermediate", "label": "I have some experience"},
+            {"value": "advanced", "label": "I'm experienced in this field"}
+        ]
+    },
+    {
+        "id": "q3", "dimension": "learning_pace",
+        "question": "How do you prefer to learn new concepts?",
+        "options": [
+            {"value": "slow", "label": "Take my time, step by step"},
+            {"value": "moderate", "label": "Balanced pace with practice"},
+            {"value": "fast", "label": "Quick overview, dive into details later"}
+        ]
+    },
+    {
+        "id": "q4", "dimension": "language",
+        "question": "What is your preferred language?",
+        "options": [
+            {"value": "en", "label": "English"},
+            {"value": "ur", "label": "اردو (Urdu)"}
+        ]
+    },
+    {
+        "id": "q5", "dimension": "content_depth",
+        "question": "How deep do you want to go into topics?",
+        "options": [
+            {"value": "overview", "label": "High-level overview"},
+            {"value": "standard", "label": "Balanced depth"},
+            {"value": "deep-dive", "label": "Deep technical details"}
+        ]
+    },
+    {
+        "id": "q6", "dimension": "example_preference",
+        "question": "What type of examples help you learn?",
+        "options": [
+            {"value": "theoretical", "label": "Conceptual explanations"},
+            {"value": "practical", "label": "Real-world use cases"},
+            {"value": "code-heavy", "label": "Code snippets and implementations"}
+        ]
+    },
+    {
+        "id": "q7", "dimension": "difficulty_tolerance",
+        "question": "What difficulty level do you prefer?",
+        "options": [
+            {"value": "easy", "label": "Keep it simple"},
+            {"value": "moderate", "label": "Some challenge is good"},
+            {"value": "challenging", "label": "Challenge me"}
+        ]
+    },
+    {
+        "id": "q8", "dimension": "interaction_style",
+        "question": "How do you prefer to interact with content?",
+        "options": [
+            {"value": "passive", "label": "Just read and absorb"},
+            {"value": "interactive", "label": "With questions and prompts"},
+            {"value": "hands-on", "label": "With exercises and labs"}
+        ]
+    },
+    {
+        "id": "q9", "dimension": "time_availability",
+        "question": "How much time can you dedicate to learning?",
+        "options": [
+            {"value": "limited", "label": "Short sessions (5-15 min)"},
+            {"value": "moderate", "label": "Medium sessions (15-30 min)"},
+            {"value": "extensive", "label": "Long sessions (30+ min)"}
+        ]
+    },
+    {
+        "id": "q10", "dimension": "goal_orientation",
+        "question": "What is your primary learning goal?",
+        "options": [
+            {"value": "certification", "label": "Pass exams/certifications"},
+            {"value": "understanding", "label": "Deep understanding"},
+            {"value": "application", "label": "Build real projects"}
+        ]
+    }
+]
+
+
+def build_personalization_prompt(profile: ProfileDimensions) -> str:
+    """Build personalization system prompt from profile dimensions."""
+    instructions = []
+
+    dims = profile.model_dump()
+    for dim_name, dim_value in dims.items():
+        if dim_name in DIMENSION_INSTRUCTIONS:
+            if dim_value in DIMENSION_INSTRUCTIONS[dim_name]:
+                instructions.append(DIMENSION_INSTRUCTIONS[dim_name][dim_value])
+
+    return "\n".join(instructions)
+
+
+def personalize_response(content: str, profile: ProfileDimensions) -> str:
+    """Apply personalization to content using OpenAI (rag-personalizer pattern)."""
+    client = get_openai_client()
+    if not client:
+        return content  # Return original if no client
+
+    personalization_prompt = build_personalization_prompt(profile)
+
+    system_prompt = f"""You are an expert educational content adapter. Transform the given content to match the learner's profile.
+
+Learner Profile:
+- Learning Style: {profile.learning_style}
+- Knowledge Level: {profile.knowledge_level}
+- Content Depth: {profile.content_depth}
+- Example Preference: {profile.example_preference}
+- Language: {profile.language}
+
+Adaptation Instructions:
+{personalization_prompt}
+
+Keep the core information accurate but adapt the presentation for this specific learner."""
+
+    if profile.language == "ur":
+        system_prompt += "\n\nIMPORTANT: Provide the final output in Urdu (اردو). Keep technical terms in English."
+
+    try:
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Personalize this content:\n\n{content}"}
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Personalization error: {e}")
+        return content
+
+
+# =============================================================================
+# Personalization Endpoints
+# =============================================================================
+
+@app.get("/api/personalization/questions", response_model=List[OnboardingQuestion])
+async def get_onboarding_questions():
+    """
+    Get the 10 onboarding questions for learner profiling.
+    Uses rag-personalizer skill's 10-dimension profile model.
+    """
+    return ONBOARDING_QUESTIONS
+
+
+@app.post("/api/personalization/profile", response_model=LearnerProfile)
+async def create_learner_profile(response: OnboardingResponse):
+    """
+    Create or update learner profile from onboarding answers.
+    Uses rag-personalizer skill's ProfileDimensions model.
+    """
+    logger.info(f"Creating learner profile for: {response.user_id}")
+
+    now = datetime.utcnow().isoformat() + "Z"
+
+    # Build dimensions from answers
+    dimensions = ProfileDimensions()
+    for dimension, value in response.answers.items():
+        if dimension in VALID_DIMENSIONS:
+            if value in VALID_DIMENSIONS[dimension]:
+                setattr(dimensions, dimension, value)
+
+    profile = LearnerProfile(
+        user_id=response.user_id,
+        dimensions=dimensions,
+        created_at=now,
+        updated_at=now
+    )
+
+    _learner_profiles[response.user_id] = profile
+    logger.info(f"Profile created: {response.user_id} - {dimensions.knowledge_level}/{dimensions.learning_style}")
+
+    return profile
+
+
+@app.get("/api/personalization/profile/{user_id}", response_model=LearnerProfile)
+async def get_learner_profile(user_id: str):
+    """Get learner profile by user ID."""
+    if user_id not in _learner_profiles:
+        # Return default profile
+        return LearnerProfile(
+            user_id=user_id,
+            dimensions=ProfileDimensions(),
+            created_at=datetime.utcnow().isoformat() + "Z",
+            updated_at=datetime.utcnow().isoformat() + "Z"
+        )
+    return _learner_profiles[user_id]
+
+
+@app.put("/api/personalization/profile/{user_id}", response_model=LearnerProfile)
+async def update_learner_profile(user_id: str, dimensions: ProfileDimensions):
+    """Update learner profile dimensions."""
+    now = datetime.utcnow().isoformat() + "Z"
+
+    if user_id in _learner_profiles:
+        profile = _learner_profiles[user_id]
+        profile.dimensions = dimensions
+        profile.updated_at = now
+    else:
+        profile = LearnerProfile(
+            user_id=user_id,
+            dimensions=dimensions,
+            created_at=now,
+            updated_at=now
+        )
+        _learner_profiles[user_id] = profile
+
+    logger.info(f"Profile updated: {user_id}")
+    return profile
+
+
+@app.post("/api/chat/personalized", response_model=PersonalizedChatResponse)
+async def personalized_chat(request: PersonalizedChatRequest):
+    """
+    Personalized RAG chat endpoint.
+    Uses rag-personalizer skill to adapt responses based on learner profile.
+    """
+    import time
+    start_time = time.time()
+
+    logger.info(f"Personalized chat: {request.message[:50]}...")
+
+    # Get or create profile
+    profile = None
+    if request.user_id and request.user_id in _learner_profiles:
+        profile = _learner_profiles[request.user_id]
+        logger.info(f"Using profile: {request.user_id} ({profile.dimensions.knowledge_level})")
+    else:
+        profile = LearnerProfile(
+            user_id=request.user_id or "anonymous",
+            dimensions=ProfileDimensions()
+        )
+
+    # Retrieve context from RAG
+    context = retrieve_context(
+        request.message,
+        language=profile.dimensions.language,
+        top_k=5
+    )
+
+    if not context:
+        return PersonalizedChatResponse(
+            answer="I don't have information about that in the book content.",
+            personalized=False,
+            profile_applied=None,
+            citations=[],
+            confidence=0.0,
+            response_time_ms=int((time.time() - start_time) * 1000)
+        )
+
+    # Generate base response
+    answer, confidence = generate_response(request.message, context, request.history)
+
+    # Personalize response using rag-personalizer pattern
+    personalized_answer = personalize_response(answer, profile.dimensions)
+
+    # Build citations
+    citations = []
+    seen = set()
+    for c in context:
+        key = f"{c.get('chapter')}:{c.get('section')}"
+        if key not in seen:
+            seen.add(key)
+            citations.append(Citation(
+                chapter=c.get("chapter"),
+                section=c.get("section", "Unknown"),
+                source=c.get("source", "")
+            ))
+
+    response_time_ms = int((time.time() - start_time) * 1000)
+
+    logger.info(f"Personalized response in {response_time_ms}ms")
+
+    return PersonalizedChatResponse(
+        answer=personalized_answer,
+        personalized=True,
+        profile_applied=profile.dimensions,
+        citations=citations,
+        confidence=confidence,
+        response_time_ms=response_time_ms
+    )
+
+
+@app.get("/api/personalization/health")
+async def personalization_health():
+    """Check personalization service health."""
+    return {
+        "status": "healthy",
+        "profiles_count": len(_learner_profiles),
+        "dimensions_supported": list(VALID_DIMENSIONS.keys()),
+        "questions_count": len(ONBOARDING_QUESTIONS)
     }
 
 
