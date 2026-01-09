@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@site/src/context/AuthContext';
 import styles from './styles.module.css';
 
-const API_BASE = 'https://physical-ai-book-api-sids-projects-87a19a70.vercel.app';
+const API_BASE = '';
 
 export default function OnboardingWizard({ isOpen, onClose, onComplete }) {
   const [questions, setQuestions] = useState([]);

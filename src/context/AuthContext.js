@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const API_BASE = 'https://physical-ai-book-api-sids-projects-87a19a70.vercel.app';
+const API_BASE = '';
 
 const AuthContext = createContext(null);
 
