@@ -1,7 +1,10 @@
 /**
  * Physical AI Book - Custom Styles
- * Includes RTL support for Urdu
+ * Includes comprehensive RTL support for Urdu (urdu-rtl-styler skill)
  */
+
+/* Google Fonts Import - Noto Nastaliq Urdu */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 
 :root {
   --ifm-color-primary: #2e8555;
@@ -13,6 +16,11 @@
   --ifm-color-primary-lightest: #3cad6e;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Urdu Typography Variables */
+  --ifm-font-family-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', serif;
+  --ifm-line-height-urdu: 2.2;
+  --ifm-font-size-urdu-base: 1.1rem;
 }
 
 [data-theme='dark'] {
@@ -26,51 +34,119 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
-/* RTL Support for Urdu */
-html[dir='rtl'] {
-  direction: rtl;
-}
+/* ===========================================
+   RTL Base Styles (urdu-rtl-styler skill)
+   =========================================== */
 
-html[dir='rtl'] .navbar__items {
-  flex-direction: row-reverse;
-}
-
-html[dir='rtl'] .navbar__items--right {
-  flex-direction: row-reverse;
-}
-
-html[dir='rtl'] .markdown {
+[dir='rtl'] {
+  font-family: var(--ifm-font-family-urdu);
+  line-height: var(--ifm-line-height-urdu);
   text-align: right;
 }
 
-html[dir='rtl'] .markdown ul,
-html[dir='rtl'] .markdown ol {
+/* RTL Typography */
+[dir='rtl'] h1 { font-size: 2.5rem; line-height: 1.6; }
+[dir='rtl'] h2 { font-size: 2rem; line-height: 1.7; }
+[dir='rtl'] h3 { font-size: 1.5rem; line-height: 1.8; }
+
+[dir='rtl'] p,
+[dir='rtl'] li,
+[dir='rtl'] td,
+[dir='rtl'] th {
+  font-family: var(--ifm-font-family-urdu);
+  font-size: var(--ifm-font-size-urdu-base);
+  line-height: var(--ifm-line-height-urdu);
+}
+
+/* Navbar RTL */
+[dir='rtl'] .navbar__items { flex-direction: row-reverse; }
+[dir='rtl'] .navbar__items--right { flex-direction: row-reverse; }
+[dir='rtl'] .navbar__brand { margin-right: 0; margin-left: 1rem; }
+[dir='rtl'] .navbar__title { font-family: var(--ifm-font-family-urdu); }
+
+/* Sidebar RTL */
+[dir='rtl'] .theme-doc-sidebar-container {
+  border-right: none;
+  border-left: 1px solid var(--ifm-toc-border-color);
+}
+
+[dir='rtl'] .menu__link {
+  padding-right: var(--ifm-menu-link-padding-horizontal);
+  padding-left: 0.5rem;
+  font-family: var(--ifm-font-family-urdu);
+}
+
+[dir='rtl'] .menu__link--active {
+  border-right: 3px solid var(--ifm-color-primary);
+  border-left: none;
+}
+
+[dir='rtl'] .menu__list .menu__list {
+  padding-right: var(--ifm-menu-link-padding-horizontal);
+  padding-left: 0;
+  margin-right: 0.75rem;
+  margin-left: 0;
+  border-right: 1px solid var(--ifm-color-emphasis-300);
+  border-left: none;
+}
+
+/* Table of Contents RTL */
+[dir='rtl'] .table-of-contents {
+  padding-right: 0;
+  border-right: none;
+  border-left: 1px solid var(--ifm-toc-border-color);
+  text-align: right;
+}
+
+/* Pagination RTL */
+[dir='rtl'] .pagination-nav { flex-direction: row-reverse; }
+[dir='rtl'] .pagination-nav__link--prev { text-align: right; }
+[dir='rtl'] .pagination-nav__link--next { text-align: left; }
+
+/* Lists RTL */
+[dir='rtl'] ul,
+[dir='rtl'] ol {
   padding-right: 2rem;
   padding-left: 0;
 }
 
-html[dir='rtl'] .table-of-contents {
-  text-align: right;
-}
-
-html[dir='rtl'] .menu {
-  text-align: right;
-}
-
-html[dir='rtl'] .menu__link {
-  padding-right: var(--ifm-menu-link-padding-horizontal);
+/* Blockquotes RTL */
+[dir='rtl'] blockquote {
+  border-right: 4px solid var(--ifm-color-emphasis-300);
+  border-left: none;
+  padding-right: 1rem;
   padding-left: 0;
 }
 
-/* Urdu font family */
-html[lang='ur'],
-html[lang='ur'] body {
-  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Nafees', serif;
+/* Admonitions RTL */
+[dir='rtl'] .admonition {
+  border-right: 0.25rem solid var(--ifm-alert-border-color);
+  border-left: none;
 }
 
-/* Code blocks should stay LTR */
-html[dir='rtl'] pre,
-html[dir='rtl'] code {
+/* Footer RTL */
+[dir='rtl'] .footer { text-align: right; }
+[dir='rtl'] .footer__links { flex-direction: row-reverse; }
+[dir='rtl'] .footer__title { font-family: var(--ifm-font-family-urdu); }
+
+/* Code Blocks - Keep LTR */
+[dir='rtl'] pre,
+[dir='rtl'] code,
+[dir='rtl'] .prism-code {
+  direction: ltr;
+  text-align: left;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+/* Forms RTL */
+[dir='rtl'] input,
+[dir='rtl'] textarea {
+  text-align: right;
+  font-family: var(--ifm-font-family-urdu);
+}
+
+[dir='rtl'] input[type="email"],
+[dir='rtl'] input[type="url"] {
   direction: ltr;
   text-align: left;
 }

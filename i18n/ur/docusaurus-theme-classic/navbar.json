@@ -10,5 +10,17 @@
   "item.label.GitHub": {
     "message": "گٹ ہب",
     "description": "Navbar item with label GitHub"
+  },
+  "item.label.Introduction": {
+    "message": "تعارف",
+    "description": "Navbar item with label Introduction"
+  },
+  "item.label.Getting Started": {
+    "message": "شروع کریں",
+    "description": "Navbar item with label Getting Started"
+  },
+  "logo.alt": {
+    "message": "فزیکل اے آئی کتاب لوگو",
+    "description": "The alt text of navbar logo"
   }
 }

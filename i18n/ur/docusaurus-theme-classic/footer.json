@@ -1,6 +1,34 @@
 {
   "copyright": {
-    "message": "کاپی رائٹ © 2026 فزیکل اے آئی کتاب۔",
+    "message": "کاپی رائٹ © 2026 فزیکل اے آئی کتاب۔ تمام حقوق محفوظ ہیں۔",
     "description": "The footer copyright"
+  },
+  "link.title.Docs": {
+    "message": "دستاویزات",
+    "description": "The title of the footer links column with title=Docs in the footer"
+  },
+  "link.title.Community": {
+    "message": "کمیونٹی",
+    "description": "The title of the footer links column with title=Community in the footer"
+  },
+  "link.title.More": {
+    "message": "مزید",
+    "description": "The title of the footer links column with title=More in the footer"
+  },
+  "link.item.label.Chapters": {
+    "message": "ابواب",
+    "description": "The label of footer link with label=Chapters"
+  },
+  "link.item.label.GitHub": {
+    "message": "گٹ ہب",
+    "description": "The label of footer link with label=GitHub"
+  },
+  "link.item.label.Introduction": {
+    "message": "تعارف",
+    "description": "The label of footer link with label=Introduction"
+  },
+  "link.item.label.Getting Started": {
+    "message": "شروع کریں",
+    "description": "The label of footer link with label=Getting Started"
   }
 }

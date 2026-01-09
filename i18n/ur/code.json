@@ -30,5 +30,69 @@
   "theme.NotFound.p1": {
     "message": "ہم وہ نہیں ڈھونڈ سکے جو آپ تلاش کر رہے تھے۔",
     "description": "The first paragraph of the 404 page"
+  },
+  "theme.NotFound.p2": {
+    "message": "براہ کرم اس صفحے سے لنک کرنے والی سائٹ کے مالک سے رابطہ کریں۔",
+    "description": "The second paragraph of the 404 page"
+  },
+  "theme.docs.sidebar.navAriaLabel": {
+    "message": "دستاویزات کا سائیڈبار",
+    "description": "The ARIA label for the sidebar navigation"
+  },
+  "theme.docs.tagDocListPageTitle.nDocsTagged": {
+    "message": "ایک دستاویز|{count} دستاویزات",
+    "description": "Pluralized label for docs tagged"
+  },
+  "theme.docs.tagDocListPageTitle": {
+    "message": "{nDocsTagged} کو \"{tagName}\" کے ساتھ ٹیگ کیا گیا",
+    "description": "The title of the page for a docs tag"
+  },
+  "theme.docs.versionBadge.label": {
+    "message": "ورژن: {versionLabel}",
+    "description": "The label for the version badge"
+  },
+  "theme.common.editThisPage": {
+    "message": "اس صفحے میں ترمیم کریں",
+    "description": "The link label to edit the current page"
+  },
+  "theme.common.headingLinkTitle": {
+    "message": "{heading} کا براہ راست لنک",
+    "description": "Title for the heading link"
+  },
+  "theme.common.skipToMainContent": {
+    "message": "مرکزی مواد پر جائیں",
+    "description": "The skip to content label"
+  },
+  "theme.TOCCollapsible.toggleButtonLabel": {
+    "message": "اس صفحے پر",
+    "description": "The toggle button label for table of contents"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "زبانیں",
+    "description": "The label for the mobile language dropdown"
+  },
+  "theme.SearchBar.label": {
+    "message": "تلاش کریں",
+    "description": "The label for the search bar"
+  },
+  "theme.SearchBar.placeholder": {
+    "message": "تلاش کریں...",
+    "description": "The placeholder for the search bar"
+  },
+  "theme.tags.tagsListLabel": {
+    "message": "ٹیگز:",
+    "description": "The label for the tags list"
+  },
+  "theme.lastUpdated.atDate": {
+    "message": " بتاریخ {date}",
+    "description": "The date label for last updated"
+  },
+  "theme.lastUpdated.byUser": {
+    "message": " از {user}",
+    "description": "The author label for last updated"
+  },
+  "theme.lastUpdated.lastUpdatedAtBy": {
+    "message": "آخری تازہ کاری{atDate}{byUser}",
+    "description": "The last updated label"
   }
 }
