@@ -65,15 +65,8 @@ const config = {
         logo: {
           alt: 'Physical AI Book Logo',
           src: 'img/favicon.svg',
-          href: '/',
-          target: '_self',
         },
         items: [
-          {
-            to: '/',
-            label: 'Home',
-            position: 'left',
-          },
           {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
