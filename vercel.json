@@ -1,20 +1,8 @@
 {
   "version": 2,
+  "framework": "docusaurus-2",
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "builds": [
-    {
-      "src": "api/main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    }
-  ],
   "routes": [
     {
       "src": "/api/(.*)",
@@ -27,13 +15,11 @@
     {
       "src": "/openapi.json",
       "dest": "api/main.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/main.py": {
+      "runtime": "python3.9"
+    }
+  }
 }
