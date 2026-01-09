@@ -62,6 +62,11 @@ const config = {
     ({
       navbar: {
         title: 'Physical AI Book',
+        logo: {
+          alt: 'Physical AI Book Logo',
+          src: 'img/favicon.svg',
+          href: '/',
+        },
         items: [
           {
             type: 'docSidebar',
