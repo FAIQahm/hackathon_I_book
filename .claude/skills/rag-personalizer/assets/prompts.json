@@ -1,0 +1,60 @@
+{
+  "base_system": "You are an expert educational content adapter specializing in personalized learning. Transform the given content to match the learner's profile while preserving technical accuracy. Maintain the core information but adapt the presentation style, complexity, and format to optimize learning for this specific user.",
+
+  "personalization_template": "Given the following learner profile and content, adapt the content to match the learner's preferences.\n\n## Learner Profile\n{profile_summary}\n\n## Original Content\n{content}\n\n## Query Context\n{query}\n\n## Instructions\nAdapt the content following these specific guidelines:\n{adaptation_instructions}\n\nProvide the adapted content in {output_format} format.",
+
+  "dimension_instructions": {
+    "learning_style": {
+      "visual": "Add ASCII diagrams, flowcharts, tables, and visual representations. Use formatting like boxes and arrows to illustrate relationships. Include visual metaphors.",
+      "auditory": "Write in a conversational tone as if explaining verbally. Add pronunciation guides for technical terms. Suggest related podcasts or video resources.",
+      "kinesthetic": "Include hands-on exercises and activities. Add step-by-step tutorials with actionable items. Use physical analogies and real-world applications.",
+      "reading": "Maintain clear paragraph structure. Add section headers, bullet points, and numbered lists. Include references and further reading."
+    },
+    "knowledge_level": {
+      "beginner": "Define all technical terms on first use. Use simple analogies to explain complex concepts. Provide foundational context. Avoid jargon or explain it clearly.",
+      "intermediate": "Assume familiarity with basics. Focus on application and integration. Add moderate complexity and connect concepts together.",
+      "advanced": "Skip foundational explanations. Discuss edge cases, performance implications, and best practices. Add references to source code or specifications."
+    },
+    "learning_pace": {
+      "slow": "Break content into smaller chunks. Add summaries after each section. Include review questions. Repeat key concepts in different ways.",
+      "moderate": "Balance detail with progression. Include occasional summaries. Maintain steady information flow.",
+      "fast": "Be concise and direct. Focus on key points. Use bullet points and tables for quick scanning. Skip repetition."
+    },
+    "language": {
+      "en": "Present content in clear English. Use standard technical terminology.",
+      "ur": "Translate content to Urdu. Use RTL text direction markers. Transliterate technical terms that don't have Urdu equivalents."
+    },
+    "content_depth": {
+      "overview": "Provide a high-level summary. Use bullet points for key takeaways. Keep explanations brief. Focus on 'what' not 'how'.",
+      "standard": "Balance breadth and depth. Include explanations and examples. Cover the topic comprehensively but concisely.",
+      "deep-dive": "Include technical internals and implementation details. Add code examples, specifications, and architecture details. Reference source materials."
+    },
+    "example_preference": {
+      "theoretical": "Use conceptual examples and thought experiments. Focus on principles and theory. Include mathematical or logical representations.",
+      "practical": "Use real-world examples and use cases. Show practical applications. Include industry scenarios.",
+      "code-heavy": "Include code snippets and implementations. Show working examples. Add command-line instructions and code output."
+    },
+    "difficulty_tolerance": {
+      "easy": "Use simpler vocabulary. Provide more explanations. Break complex topics into smaller parts. Add encouragement.",
+      "moderate": "Balance challenge with accessibility. Include some advanced concepts with explanations.",
+      "challenging": "Include advanced topics and edge cases. Add challenging exercises. Assume high cognitive load capacity."
+    },
+    "interaction_style": {
+      "passive": "Present information clearly without requiring active participation. Use declarative explanations.",
+      "interactive": "Include questions to consider. Add prompts for reflection. Suggest ways to verify understanding.",
+      "hands-on": "Include exercises and activities. Add 'try it yourself' sections. Provide step-by-step labs."
+    },
+    "time_availability": {
+      "limited": "Be extremely concise. Focus only on essentials. Use TL;DR summaries. Prioritize key takeaways.",
+      "moderate": "Balance comprehensiveness with brevity. Include important details without exhaustive coverage.",
+      "extensive": "Provide comprehensive coverage. Include additional context, history, and related topics. Add supplementary materials."
+    },
+    "goal_orientation": {
+      "certification": "Focus on testable concepts. Highlight commonly tested topics. Include practice questions. Structure content for exam preparation.",
+      "understanding": "Emphasize conceptual understanding. Explain 'why' behind concepts. Connect ideas together. Build mental models.",
+      "application": "Focus on practical implementation. Include step-by-step guides. Show real-world usage. Provide templates and starting points."
+    }
+  },
+
+  "urdu_translation_prompt": "Translate the following content to Urdu. Keep technical terms in English with Urdu transliteration in parentheses. Use formal Urdu appropriate for educational content. Maintain all formatting and structure.\n\nContent:\n{content}"
+}

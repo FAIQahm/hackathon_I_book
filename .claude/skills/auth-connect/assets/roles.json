@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "roles": {
+    "admin": {
+      "id": 1,
+      "name": "admin",
+      "display_name": "Administrator",
+      "description": "Full system access with user and content management",
+      "permissions": [
+        "read",
+        "write",
+        "delete",
+        "manage_users",
+        "manage_content",
+        "manage_roles",
+        "view_analytics",
+        "export_data",
+        "system_config"
+      ],
+      "is_system": true,
+      "can_be_assigned": false
+    },
+    "instructor": {
+      "id": 2,
+      "name": "instructor",
+      "display_name": "Instructor",
+      "description": "Content creator and course manager",
+      "permissions": [
+        "read",
+        "write",
+        "manage_content",
+        "view_student_progress",
+        "create_assessments",
+        "grade_submissions"
+      ],
+      "is_system": false,
+      "can_be_assigned": true
+    },
+    "student": {
+      "id": 3,
+      "name": "student",
+      "display_name": "Student",
+      "description": "Standard learner with full course access",
+      "permissions": [
+        "read",
+        "chat",
+        "save_progress",
+        "submit_assessments",
+        "view_own_progress",
+        "update_profile"
+      ],
+      "is_system": false,
+      "can_be_assigned": true
+    },
+    "guest": {
+      "id": 4,
+      "name": "guest",
+      "display_name": "Guest",
+      "description": "Limited read-only access to public content",
+      "permissions": [
+        "read_public"
+      ],
+      "is_system": false,
+      "can_be_assigned": true
+    }
+  },
+  "default_role": "student",
+  "permission_descriptions": {
+    "read": "View all content",
+    "read_public": "View public content only",
+    "write": "Create and edit content",
+    "delete": "Delete content",
+    "chat": "Use AI chatbot",
+    "save_progress": "Save learning progress",
+    "manage_users": "Create, edit, delete users",
+    "manage_content": "Publish and unpublish content",
+    "manage_roles": "Assign roles to users",
+    "view_analytics": "View system analytics",
+    "view_student_progress": "View all student progress",
+    "view_own_progress": "View own progress only",
+    "export_data": "Export system data",
+    "system_config": "Modify system configuration",
+    "create_assessments": "Create quizzes and tests",
+    "grade_submissions": "Grade student submissions",
+    "submit_assessments": "Submit quizzes and tests",
+    "update_profile": "Update own profile"
+  },
+  "role_hierarchy": {
+    "admin": ["instructor", "student", "guest"],
+    "instructor": ["student"],
+    "student": ["guest"],
+    "guest": []
+  }
+}

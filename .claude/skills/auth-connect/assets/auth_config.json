@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "jwt": {
+    "algorithm": "HS256",
+    "access_token_expire_minutes": 30,
+    "refresh_token_expire_days": 7,
+    "issuer": "physical-ai-book",
+    "audience": "physical-ai-book-users"
+  },
+  "password": {
+    "min_length": 8,
+    "max_length": 128,
+    "require_uppercase": true,
+    "require_lowercase": true,
+    "require_digit": true,
+    "require_special": false,
+    "bcrypt_rounds": 12
+  },
+  "session": {
+    "max_sessions_per_user": 5,
+    "session_timeout_minutes": 60,
+    "cleanup_interval_hours": 24
+  },
+  "api_key": {
+    "prefix_length": 8,
+    "key_length": 32,
+    "default_expire_days": 365
+  },
+  "rate_limit": {
+    "login_attempts_per_minute": 5,
+    "register_attempts_per_hour": 10,
+    "api_requests_per_minute": 60
+  },
+  "security": {
+    "token_blacklist_enabled": true,
+    "require_email_verification": false,
+    "allow_password_reset": true,
+    "mfa_enabled": false
+  }
+}

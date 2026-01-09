@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "description": "Environment variables contract between BackendIntegrator and SecurityLead",
+  "last_updated": "2026-01-04",
+  "variables": {
+    "required": {
+      "JWT_SECRET": {
+        "description": "Secret key for JWT token signing (min 32 chars)",
+        "owner": "SecurityLead",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "min_length": 32,
+          "pattern": null
+        },
+        "generate_command": ".claude/skills/auth-connect/scripts/setup.sh --generate-secret"
+      },
+      "DATABASE_URL": {
+        "description": "PostgreSQL connection string for Neon",
+        "owner": "BackendIntegrator",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "pattern": "^postgres(ql)?://.*",
+          "min_length": 20
+        },
+        "example": "postgresql://user:pass@host.neon.tech/dbname?sslmode=require"
+      }
+    },
+    "optional": {
+      "OPENAI_API_KEY": {
+        "description": "OpenAI API key for RAG and translation",
+        "owner": "AIEngineer",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "pattern": "^sk-.*",
+          "min_length": 40
+        }
+      },
+      "QDRANT_URL": {
+        "description": "Qdrant Cloud URL for vector storage",
+        "owner": "AIEngineer",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "pattern": "^https://.*qdrant.*"
+        }
+      },
+      "QDRANT_API_KEY": {
+        "description": "Qdrant Cloud API key",
+        "owner": "AIEngineer",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "min_length": 20
+        }
+      },
+      "GITHUB_PAGES_URL": {
+        "description": "GitHub Pages URL for CORS",
+        "owner": "BookArchitect",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "pattern": "^https://.*github\\.io.*"
+        },
+        "default": "https://faiqahm.github.io"
+      },
+      "LOG_LEVEL": {
+        "description": "Logging level for debugging",
+        "owner": "BackendIntegrator",
+        "deployer": "BackendIntegrator",
+        "validation": {
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR"]
+        },
+        "default": "INFO"
+      }
+    }
+  },
+  "vercel_environments": ["production", "preview", "development"],
+  "validation_endpoint": "/api/health/env",
+  "notes": {
+    "flow": "BackendIntegrator sets variables in Vercel → SecurityLead validates they load in code",
+    "security": "Never log actual values, only validation status"
+  }
+}

@@ -1,0 +1,24 @@
+# Auth Connect Dependencies
+# Version: 1.0.0
+
+# JWT handling
+PyJWT>=2.8.0
+
+# Password hashing
+bcrypt>=4.1.0
+passlib[bcrypt]>=1.7.4
+
+# FastAPI integration
+fastapi>=0.109.0
+pydantic>=2.5.0
+
+# Database
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+
+# CLI formatting
+rich>=13.7.0

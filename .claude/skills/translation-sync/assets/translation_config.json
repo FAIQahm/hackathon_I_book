@@ -1,0 +1,21 @@
+{
+  "source_language": "en",
+  "target_language": "ur",
+  "preserve_patterns": [
+    "```[\\s\\S]*?```",
+    "`[^`]+`",
+    "\\{[^}]+\\}",
+    "\\[[^\\]]*\\]\\([^)]*\\)",
+    "^---[\\s\\S]*?---",
+    "<[^>]+>",
+    "\\$\\$[\\s\\S]*?\\$\\$",
+    "\\$[^$]+\\$"
+  ],
+  "rtl_wrapper": "<div dir=\"rtl\">\n\n{content}\n\n</div>",
+  "frontmatter_keys_to_translate": ["title", "description", "sidebar_label"],
+  "skip_directories": ["node_modules", ".git", "build", ".docusaurus"],
+  "file_extensions": [".md", ".mdx"],
+  "default_model": "gpt-4o-mini",
+  "batch_delay_ms": 100,
+  "max_retries": 3
+}

@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "description": "Technical terms glossary for Physical AI textbook English-to-Urdu translation",
+    "last_updated": "2026-01-02"
+  },
+  "terms": {
+    "ROS 2": {
+      "urdu": "آر او ایس ٹو",
+      "keep_english": true,
+      "context": "Robot Operating System 2"
+    },
+    "Gazebo": {
+      "urdu": "گیزیبو",
+      "keep_english": true,
+      "context": "Simulation software"
+    },
+    "robot": {
+      "urdu": "روبوٹ",
+      "keep_english": false,
+      "context": "General robotics term"
+    },
+    "sensor": {
+      "urdu": "سینسر",
+      "keep_english": true,
+      "context": "Hardware component"
+    },
+    "actuator": {
+      "urdu": "ایکچویٹر",
+      "keep_english": true,
+      "context": "Hardware component"
+    },
+    "node": {
+      "urdu": "نوڈ",
+      "keep_english": false,
+      "context": "ROS node"
+    },
+    "topic": {
+      "urdu": "ٹاپک",
+      "keep_english": false,
+      "context": "ROS topic"
+    },
+    "publisher": {
+      "urdu": "پبلشر",
+      "keep_english": false,
+      "context": "ROS publisher"
+    },
+    "subscriber": {
+      "urdu": "سبسکرائبر",
+      "keep_english": false,
+      "context": "ROS subscriber"
+    },
+    "message": {
+      "urdu": "پیغام",
+      "keep_english": false,
+      "context": "ROS message"
+    },
+    "service": {
+      "urdu": "سروس",
+      "keep_english": false,
+      "context": "ROS service"
+    },
+    "action": {
+      "urdu": "ایکشن",
+      "keep_english": false,
+      "context": "ROS action"
+    },
+    "package": {
+      "urdu": "پیکج",
+      "keep_english": false,
+      "context": "ROS package"
+    },
+    "workspace": {
+      "urdu": "ورک سپیس",
+      "keep_english": false,
+      "context": "ROS workspace"
+    },
+    "launch file": {
+      "urdu": "لانچ فائل",
+      "keep_english": false,
+      "context": "ROS launch file"
+    },
+    "URDF": {
+      "urdu": "یو آر ڈی ایف",
+      "keep_english": true,
+      "context": "Unified Robot Description Format"
+    },
+    "TF": {
+      "urdu": "ٹی ایف",
+      "keep_english": true,
+      "context": "Transform frames"
+    },
+    "SLAM": {
+      "urdu": "سلیم",
+      "keep_english": true,
+      "context": "Simultaneous Localization and Mapping"
+    },
+    "navigation": {
+      "urdu": "نیویگیشن",
+      "keep_english": false,
+      "context": "Robot navigation"
+    },
+    "localization": {
+      "urdu": "لوکلائزیشن",
+      "keep_english": false,
+      "context": "Robot localization"
+    },
+    "simulation": {
+      "urdu": "سمولیشن",
+      "keep_english": false,
+      "context": "Robot simulation"
+    },
+    "physical AI": {
+      "urdu": "فزیکل اے آئی",
+      "keep_english": true,
+      "context": "Core concept"
+    },
+    "machine learning": {
+      "urdu": "مشین لرننگ",
+      "keep_english": false,
+      "context": "AI concept"
+    },
+    "deep learning": {
+      "urdu": "ڈیپ لرننگ",
+      "keep_english": false,
+      "context": "AI concept"
+    },
+    "neural network": {
+      "urdu": "نیورل نیٹ ورک",
+      "keep_english": false,
+      "context": "AI concept"
+    },
+    "API": {
+      "urdu": "اے پی آئی",
+      "keep_english": true,
+      "context": "Application Programming Interface"
+    },
+    "SDK": {
+      "urdu": "ایس ڈی کے",
+      "keep_english": true,
+      "context": "Software Development Kit"
+    },
+    "CLI": {
+      "urdu": "سی ایل آئی",
+      "keep_english": true,
+      "context": "Command Line Interface"
+    },
+    "GUI": {
+      "urdu": "جی یو آئی",
+      "keep_english": true,
+      "context": "Graphical User Interface"
+    },
+    "RViz": {
+      "urdu": "آر ویز",
+      "keep_english": true,
+      "context": "ROS visualization tool"
+    },
+    "lidar": {
+      "urdu": "لائیڈار",
+      "keep_english": true,
+      "context": "Light Detection and Ranging sensor"
+    },
+    "camera": {
+      "urdu": "کیمرہ",
+      "keep_english": false,
+      "context": "Vision sensor"
+    },
+    "IMU": {
+      "urdu": "آئی ایم یو",
+      "keep_english": true,
+      "context": "Inertial Measurement Unit"
+    },
+    "odometry": {
+      "urdu": "اوڈومیٹری",
+      "keep_english": false,
+      "context": "Motion estimation"
+    },
+    "path planning": {
+      "urdu": "پاتھ پلاننگ",
+      "keep_english": false,
+      "context": "Navigation concept"
+    },
+    "obstacle avoidance": {
+      "urdu": "رکاوٹ سے بچاؤ",
+      "keep_english": false,
+      "context": "Navigation concept"
+    }
+  }
+}

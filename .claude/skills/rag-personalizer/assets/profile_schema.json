@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["id", "dimensions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique user identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "learning_style": {
+          "enum": ["visual", "auditory", "kinesthetic", "reading"],
+          "default": "reading",
+          "description": "Preferred learning modality"
+        },
+        "knowledge_level": {
+          "enum": ["beginner", "intermediate", "advanced"],
+          "default": "beginner",
+          "description": "Current expertise level"
+        },
+        "learning_pace": {
+          "enum": ["slow", "moderate", "fast"],
+          "default": "moderate",
+          "description": "Preferred speed of content delivery"
+        },
+        "language": {
+          "enum": ["en", "ur"],
+          "default": "en",
+          "description": "Preferred language"
+        },
+        "content_depth": {
+          "enum": ["overview", "standard", "deep-dive"],
+          "default": "standard",
+          "description": "Level of detail preferred"
+        },
+        "example_preference": {
+          "enum": ["theoretical", "practical", "code-heavy"],
+          "default": "practical",
+          "description": "Type of examples preferred"
+        },
+        "difficulty_tolerance": {
+          "enum": ["easy", "moderate", "challenging"],
+          "default": "moderate",
+          "description": "Comfort with challenging content"
+        },
+        "interaction_style": {
+          "enum": ["passive", "interactive", "hands-on"],
+          "default": "interactive",
+          "description": "Preferred engagement level"
+        },
+        "time_availability": {
+          "enum": ["limited", "moderate", "extensive"],
+          "default": "moderate",
+          "description": "Time available for learning"
+        },
+        "goal_orientation": {
+          "enum": ["certification", "understanding", "application"],
+          "default": "understanding",
+          "description": "Primary learning goal"
+        }
+      },
+      "required": [
+        "learning_style",
+        "knowledge_level",
+        "learning_pace",
+        "language",
+        "content_depth",
+        "example_preference",
+        "difficulty_tolerance",
+        "interaction_style",
+        "time_availability",
+        "goal_orientation"
+      ]
+    }
+  }
+}

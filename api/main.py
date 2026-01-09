@@ -8,7 +8,7 @@ GitHub Pages: https://faiqahm.github.io
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 from fastapi import FastAPI, Request, HTTPException
@@ -24,6 +24,16 @@ try:
     QDRANT_AVAILABLE = True
 except ImportError:
     QDRANT_AVAILABLE = False
+
+# Auth Dependencies
+try:
+    import jwt
+    from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
+    import bcrypt
+    import secrets
+    AUTH_AVAILABLE = True
+except ImportError:
+    AUTH_AVAILABLE = False
 
 # =============================================================================
 # Logging Configuration
@@ -189,6 +199,50 @@ class ChatResponse(BaseModel):
     confidence: float = Field(..., ge=0, le=1, example=0.92)
     response_time_ms: int = Field(..., example=850)
     cached: bool = Field(default=False)
+
+
+# =============================================================================
+# Authentication Models
+# =============================================================================
+
+class UserRegisterRequest(BaseModel):
+    """User registration request."""
+    email: str = Field(..., example="user@example.com")
+    password: str = Field(..., min_length=8, example="SecurePass123")
+    display_name: Optional[str] = Field(None, example="John Doe")
+
+class UserLoginRequest(BaseModel):
+    """User login request."""
+    email: str = Field(..., example="user@example.com")
+    password: str = Field(..., example="SecurePass123")
+
+class TokenRefreshRequest(BaseModel):
+    """Token refresh request."""
+    refresh_token: str = Field(..., example="eyJ...")
+
+class AuthTokenResponse(BaseModel):
+    """Authentication token response."""
+    access_token: str = Field(..., example="eyJ...")
+    refresh_token: str = Field(..., example="eyJ...")
+    token_type: str = Field(default="bearer")
+    expires_in: int = Field(default=1800, example=1800)
+    user_id: str = Field(..., example="user-123")
+    email: str = Field(..., example="user@example.com")
+    role: str = Field(default="student", example="student")
+
+class UserInfoResponse(BaseModel):
+    """Current user info response."""
+    user_id: str
+    email: str
+    display_name: Optional[str]
+    role: str
+    permissions: List[str]
+    created_at: str
+
+class AuthMessageResponse(BaseModel):
+    """Generic auth message response."""
+    success: bool
+    message: str
 
 
 # =============================================================================
@@ -738,6 +792,345 @@ async def chat_health():
         "qdrant": "connected" if qdrant_ok else "unavailable",
         "openai": "connected" if openai_ok else "unavailable",
         "collection": QDRANT_COLLECTION
+    }
+
+
+# =============================================================================
+# Authentication Service
+# =============================================================================
+
+# JWT Configuration
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# In-memory user storage (replace with Neon Postgres in production)
+_users_db: dict = {}
+_token_blacklist: set = set()
+
+# Role permissions
+ROLE_PERMISSIONS = {
+    "admin": ["read", "write", "delete", "manage_users", "manage_content"],
+    "instructor": ["read", "write", "manage_content"],
+    "student": ["read", "chat", "save_progress"],
+    "guest": ["read"]
+}
+
+
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt."""
+    if not AUTH_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash."""
+    if not AUTH_AVAILABLE:
+        return False
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8")
+    )
+
+
+def create_access_token(user_id: str, email: str, role: str) -> str:
+    """Create JWT access token."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "role": role,
+        "permissions": ROLE_PERMISSIONS.get(role, ["read"]),
+        "type": "access",
+        "iat": now.timestamp(),
+        "exp": expire.timestamp(),
+        "jti": secrets.token_hex(16)
+    }
+
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def create_refresh_token(user_id: str) -> str:
+    """Create JWT refresh token."""
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
+    payload = {
+        "sub": user_id,
+        "type": "refresh",
+        "iat": now.timestamp(),
+        "exp": expire.timestamp(),
+        "jti": secrets.token_hex(16)
+    }
+
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def verify_token(token: str) -> Optional[dict]:
+    """Verify and decode JWT token."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        jti = payload.get("jti")
+        if jti and jti in _token_blacklist:
+            return None
+        return payload
+    except (ExpiredSignatureError, InvalidTokenError):
+        return None
+
+
+def get_current_user_from_token(authorization: str = None) -> Optional[dict]:
+    """Extract user from Authorization header."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[7:]
+    return verify_token(token)
+
+
+# =============================================================================
+# Authentication Endpoints
+# =============================================================================
+
+@app.post("/api/auth/register", response_model=AuthTokenResponse)
+async def register(request: UserRegisterRequest):
+    """
+    Register a new user account.
+
+    - Creates user with hashed password
+    - Returns JWT tokens for immediate login
+    """
+    if not AUTH_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT not configured")
+
+    logger.info(f"Registration attempt for: {request.email}")
+
+    # Check if user exists
+    if request.email.lower() in _users_db:
+        logger.warning(f"Registration failed - email exists: {request.email}")
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    # Validate password strength
+    if len(request.password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    # Create user
+    user_id = f"user_{secrets.token_hex(8)}"
+    now = datetime.utcnow().isoformat() + "Z"
+
+    user_data = {
+        "user_id": user_id,
+        "email": request.email.lower(),
+        "password_hash": hash_password(request.password),
+        "display_name": request.display_name or request.email.split("@")[0],
+        "role": "student",
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now
+    }
+
+    _users_db[request.email.lower()] = user_data
+    logger.info(f"User registered: {user_id}")
+
+    # Generate tokens
+    access_token = create_access_token(user_id, request.email.lower(), "student")
+    refresh_token = create_refresh_token(user_id)
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user_id=user_id,
+        email=request.email.lower(),
+        role="student"
+    )
+
+
+@app.post("/api/auth/login", response_model=AuthTokenResponse)
+async def login(request: UserLoginRequest):
+    """
+    Login with email and password.
+
+    - Verifies credentials
+    - Returns JWT access and refresh tokens
+    """
+    if not AUTH_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT not configured")
+
+    logger.info(f"Login attempt for: {request.email}")
+
+    # Find user
+    user = _users_db.get(request.email.lower())
+    if not user:
+        logger.warning(f"Login failed - user not found: {request.email}")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Verify password
+    if not verify_password(request.password, user["password_hash"]):
+        logger.warning(f"Login failed - wrong password: {request.email}")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Check if active
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Account is disabled")
+
+    # Generate tokens
+    access_token = create_access_token(user["user_id"], user["email"], user["role"])
+    refresh_token = create_refresh_token(user["user_id"])
+
+    logger.info(f"Login successful: {user['user_id']}")
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user_id=user["user_id"],
+        email=user["email"],
+        role=user["role"]
+    )
+
+
+@app.post("/api/auth/refresh", response_model=AuthTokenResponse)
+async def refresh_token(request: TokenRefreshRequest):
+    """
+    Refresh access token using refresh token.
+
+    - Validates refresh token
+    - Returns new access token
+    """
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT not configured")
+
+    payload = verify_token(request.refresh_token)
+
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user_id = payload.get("sub")
+
+    # Find user by ID
+    user = None
+    for u in _users_db.values():
+        if u["user_id"] == user_id:
+            user = u
+            break
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # Generate new tokens
+    access_token = create_access_token(user["user_id"], user["email"], user["role"])
+    new_refresh_token = create_refresh_token(user["user_id"])
+
+    # Blacklist old refresh token
+    old_jti = payload.get("jti")
+    if old_jti:
+        _token_blacklist.add(old_jti)
+
+    logger.info(f"Token refreshed for: {user_id}")
+
+    return AuthTokenResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+        token_type="bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user_id=user["user_id"],
+        email=user["email"],
+        role=user["role"]
+    )
+
+
+@app.post("/api/auth/logout", response_model=AuthMessageResponse)
+async def logout(request: Request):
+    """
+    Logout and invalidate current token.
+
+    - Adds token to blacklist
+    - Token cannot be used again
+    """
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+
+    token = auth_header[7:]
+    payload = verify_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Add to blacklist
+    jti = payload.get("jti")
+    if jti:
+        _token_blacklist.add(jti)
+
+    logger.info(f"User logged out: {payload.get('sub')}")
+
+    return AuthMessageResponse(success=True, message="Logged out successfully")
+
+
+@app.get("/api/auth/me", response_model=UserInfoResponse)
+async def get_current_user(request: Request):
+    """
+    Get current authenticated user info.
+
+    - Requires valid access token in Authorization header
+    - Returns user profile and permissions
+    """
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No token provided")
+
+    token = auth_header[7:]
+    payload = verify_token(token)
+
+    if not payload or payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_id = payload.get("sub")
+
+    # Find user
+    user = None
+    for u in _users_db.values():
+        if u["user_id"] == user_id:
+            user = u
+            break
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserInfoResponse(
+        user_id=user["user_id"],
+        email=user["email"],
+        display_name=user.get("display_name"),
+        role=user["role"],
+        permissions=ROLE_PERMISSIONS.get(user["role"], ["read"]),
+        created_at=user["created_at"]
+    )
+
+
+@app.get("/api/auth/health")
+async def auth_health():
+    """Check authentication service health."""
+    return {
+        "status": "healthy" if AUTH_AVAILABLE and JWT_SECRET else "degraded",
+        "jwt_configured": bool(JWT_SECRET),
+        "bcrypt_available": AUTH_AVAILABLE,
+        "users_count": len(_users_db)
     }
 
 
