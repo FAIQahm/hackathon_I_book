@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "framework": "docusaurus-2",
   "builds": [
     {
       "src": "api/main.py",
@@ -13,10 +14,6 @@
     },
     {
       "src": "/health",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/docs",
       "dest": "api/main.py"
     },
     {

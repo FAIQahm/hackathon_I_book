@@ -44,3 +44,8 @@ coverage/
 *.tmp
 *.temp
 .claude/settings.local.json
+
+# Environment variables (added by vercel-fastapi-link)
+.env
+__pycache__/
+*.pyc
