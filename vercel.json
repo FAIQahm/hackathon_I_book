@@ -1,16 +1,10 @@
 {
   "version": 2,
+  "framework": "docusaurus-2",
   "builds": [
     {
       "src": "api/main.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
     }
   ],
   "routes": [
@@ -25,14 +19,6 @@
     {
       "src": "/openapi.json",
       "dest": "api/main.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "status": 404,
-      "dest": "/404.html"
     }
   ]
 }
