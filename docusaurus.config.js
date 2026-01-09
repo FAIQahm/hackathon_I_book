@@ -7,7 +7,7 @@ const config = {
   favicon: 'img/favicon.svg',
 
   // Vercel deployment
-  url: 'https://hackathon-i-book.vercel.app',
+  url: 'https://physical-ai-book-api.vercel.app',
   baseUrl: '/',
   organizationName: 'faiqahm',
   projectName: 'hackathon_I_book',
