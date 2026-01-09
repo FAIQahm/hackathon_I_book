@@ -1,38 +1,11 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "npm run build",
-        "outputDirectory": "build"
-      }
-    }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/main.py" },
+    { "source": "/health", "destination": "/api/main.py" }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/health",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/docs",
-      "dest": "api/main.py"
-    },
-    {
-      "src": "/openapi.json",
-      "dest": "api/main.py"
-    },
-    {
-      "handle": "filesystem"
+  "functions": {
+    "api/main.py": {
+      "runtime": "python3.11"
     }
-  ]
+  }
 }
