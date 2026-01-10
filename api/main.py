@@ -149,6 +149,37 @@ class PersonalizationApplyResponse(BaseModel):
 
 
 # =============================================================================
+# Chat/RAG Models
+# =============================================================================
+
+class ChatMessage(BaseModel):
+    """A single chat message."""
+    role: str = Field(..., example="user")
+    content: str = Field(..., example="What is Physical AI?")
+
+
+class ChatRequest(BaseModel):
+    """Request model for chat endpoint."""
+    message: str = Field(..., min_length=1, max_length=500, example="What is Physical AI?")
+    language: str = Field(default="en", example="en")
+    history: List[ChatMessage] = Field(default=[], description="Previous conversation messages")
+
+
+class Citation(BaseModel):
+    """A citation referencing source material."""
+    chapter: Optional[int] = Field(None, example=1)
+    section: str = Field(..., example="Introduction")
+    source: str = Field(default="", example="docs/chapter-1/index.md")
+
+
+class ChatResponse(BaseModel):
+    """Response model for chat endpoint."""
+    answer: str = Field(..., example="Physical AI refers to...")
+    citations: List[Citation] = Field(default=[])
+    confidence: float = Field(default=0.0, ge=0, le=1, example=0.85)
+
+
+# =============================================================================
 # App Configuration
 # =============================================================================
 
@@ -268,6 +299,71 @@ async def get_chapter(chapter_id: int):
 # In-memory storage for demo (replace with database in production)
 _user_profiles: dict = {}
 _user_learning_paths: dict = {}
+
+# Onboarding questions based on 10-dimension user profile
+ONBOARDING_QUESTIONS = [
+    {
+        "dimension": "learning_style",
+        "question": "How do you prefer to learn new concepts?",
+        "options": [
+            {"value": "visual", "label": "Visual - Diagrams, charts, and images"},
+            {"value": "reading", "label": "Reading - Text and written explanations"},
+            {"value": "kinesthetic", "label": "Hands-on - Interactive exercises and practice"},
+            {"value": "auditory", "label": "Auditory - Verbal explanations and discussions"}
+        ]
+    },
+    {
+        "dimension": "knowledge_level",
+        "question": "What is your current experience with robotics and AI?",
+        "options": [
+            {"value": "beginner", "label": "Beginner - New to these topics"},
+            {"value": "intermediate", "label": "Intermediate - Some experience"},
+            {"value": "advanced", "label": "Advanced - Experienced practitioner"}
+        ]
+    },
+    {
+        "dimension": "content_depth",
+        "question": "How detailed would you like the explanations to be?",
+        "options": [
+            {"value": "overview", "label": "Overview - Quick summaries and key points"},
+            {"value": "standard", "label": "Standard - Balanced detail with examples"},
+            {"value": "deep-dive", "label": "Deep-dive - Comprehensive technical details"}
+        ]
+    },
+    {
+        "dimension": "example_preference",
+        "question": "What type of examples help you learn best?",
+        "options": [
+            {"value": "theoretical", "label": "Theoretical - Concepts and principles"},
+            {"value": "practical", "label": "Practical - Real-world applications"},
+            {"value": "code-heavy", "label": "Code-heavy - Code snippets and implementations"}
+        ]
+    },
+    {
+        "dimension": "goal_orientation",
+        "question": "What is your primary learning goal?",
+        "options": [
+            {"value": "understanding", "label": "Understanding - Deep conceptual knowledge"},
+            {"value": "application", "label": "Application - Build real projects"},
+            {"value": "certification", "label": "Certification - Formal credentials"}
+        ]
+    },
+    {
+        "dimension": "language",
+        "question": "Which language do you prefer for content?",
+        "options": [
+            {"value": "en", "label": "English"},
+            {"value": "ur", "label": "اردو (Urdu)"}
+        ]
+    }
+]
+
+
+@app.get("/api/personalization/questions")
+async def get_onboarding_questions():
+    """Get personalization onboarding questions."""
+    logger.info("Fetching onboarding questions")
+    return ONBOARDING_QUESTIONS
 
 
 @app.get(
@@ -435,6 +531,206 @@ async def apply_personalization(settings: PersonalizationSettings):
         message=f"Personalization settings applied successfully for user {settings.user_id}",
         applied_at=now,
     )
+
+
+# =============================================================================
+# Chat/RAG Endpoint
+# =============================================================================
+
+# Simple response cache for demo
+_chat_cache: dict = {}
+
+
+def _get_rag_context(query: str, language: str = "en") -> tuple[list[dict], list[Citation]]:
+    """
+    Retrieve relevant context from Qdrant for RAG.
+    Returns (context_chunks, citations).
+    """
+    try:
+        from qdrant_client import QdrantClient
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from openai import OpenAI as OpenAIClient
+
+        qdrant_url = os.getenv("QDRANT_URL")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        if not all([qdrant_url, qdrant_api_key, openai_api_key]):
+            logger.warning("RAG credentials not configured, using fallback")
+            return [], []
+
+        # Create embedding for query
+        openai_client = OpenAIClient(api_key=openai_api_key)
+        embed_response = openai_client.embeddings.create(
+            input=query[:8000],
+            model="text-embedding-3-small"
+        )
+        query_vector = embed_response.data[0].embedding
+
+        # Query Qdrant
+        qdrant = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+
+        # Build filter for language
+        query_filter = Filter(
+            must=[FieldCondition(key="language", match=MatchValue(value=language))]
+        )
+
+        results = qdrant.search(
+            collection_name="textbook_chapters",
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=5
+        )
+
+        context_chunks = []
+        citations = []
+        seen_sources = set()
+
+        for hit in results:
+            if hit.score < 0.5:  # Skip low relevance results
+                continue
+
+            payload = hit.payload or {}
+            context_chunks.append({
+                "content": payload.get("content", ""),
+                "section": payload.get("section", ""),
+                "chapter": payload.get("chapter"),
+                "score": hit.score
+            })
+
+            # Add unique citations
+            source = payload.get("source", "")
+            if source not in seen_sources:
+                seen_sources.add(source)
+                citations.append(Citation(
+                    chapter=payload.get("chapter"),
+                    section=payload.get("section", "Unknown"),
+                    source=source
+                ))
+
+        return context_chunks, citations
+
+    except Exception as e:
+        logger.error(f"RAG retrieval error: {e}")
+        return [], []
+
+
+def _generate_answer(query: str, context: list[dict], history: list[ChatMessage]) -> tuple[str, float]:
+    """
+    Generate an answer using OpenAI GPT based on retrieved context.
+    Returns (answer, confidence).
+    """
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+
+    if not openai_api_key:
+        logger.warning("OpenAI API key not configured")
+        return _get_fallback_answer(query), 0.3
+
+    try:
+        from openai import OpenAI as OpenAIClient
+
+        client = OpenAIClient(api_key=openai_api_key)
+
+        # Build context string
+        if context:
+            context_text = "\n\n".join([
+                f"[Chapter {c.get('chapter', '?')}: {c.get('section', 'Unknown')}]\n{c.get('content', '')}"
+                for c in context
+            ])
+            system_prompt = f"""You are a helpful assistant for the Physical AI educational textbook.
+Answer questions based ONLY on the provided context from the book.
+If the question cannot be answered from the context, say "I don't have information about that in the Physical AI book content."
+Be concise but informative.
+
+Context from the book:
+{context_text}"""
+        else:
+            system_prompt = """You are a helpful assistant for the Physical AI educational textbook.
+You don't have specific content loaded right now. Provide general guidance about Physical AI topics like ROS 2, robotics, Gazebo simulation, and AI.
+If asked about specific book content, suggest the user check the relevant chapter."""
+
+        # Build messages with history
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # Add recent conversation history
+        for msg in history[-4:]:  # Last 4 messages for context
+            messages.append({"role": msg.role, "content": msg.content})
+
+        messages.append({"role": "user", "content": query})
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=500,
+            temperature=0.7
+        )
+
+        answer = response.choices[0].message.content
+
+        # Calculate confidence based on context relevance
+        confidence = 0.85 if context else 0.5
+        if context:
+            avg_score = sum(c.get("score", 0) for c in context) / len(context)
+            confidence = min(0.95, avg_score)
+
+        return answer, confidence
+
+    except Exception as e:
+        logger.error(f"OpenAI generation error: {e}")
+        return _get_fallback_answer(query), 0.3
+
+
+def _get_fallback_answer(query: str) -> str:
+    """Provide a fallback answer when RAG is unavailable."""
+    query_lower = query.lower()
+
+    # Simple keyword-based fallbacks
+    if "physical ai" in query_lower:
+        return "Physical AI refers to AI systems that interact with the physical world through robots and sensors. It combines machine learning, computer vision, and robotics to create intelligent physical systems."
+    elif "ros" in query_lower or "robot operating system" in query_lower:
+        return "ROS 2 (Robot Operating System 2) is an open-source robotics middleware framework. It provides tools and libraries for building robot applications, including communication, hardware abstraction, and simulation support."
+    elif "gazebo" in query_lower:
+        return "Gazebo is a powerful 3D robotics simulator that integrates with ROS 2. It allows you to test robot designs in realistic virtual environments before deploying to real hardware."
+    elif "install" in query_lower:
+        return "For installation instructions, please refer to the specific chapter in the Physical AI book. ROS 2 installation typically involves adding the ROS repository and installing packages via apt (Ubuntu) or other package managers."
+    else:
+        return "I'm having trouble connecting to the knowledge base right now. Please try again in a moment, or browse the chapters directly for information on Physical AI, ROS 2, and robotics."
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    RAG-powered chat endpoint for the Physical AI chatbot.
+
+    Retrieves relevant content from the book and generates an answer.
+    """
+    logger.info(f"Chat request: '{request.message[:50]}...' (lang={request.language})")
+
+    # Check cache first
+    cache_key = f"{request.message}:{request.language}"
+    if cache_key in _chat_cache:
+        logger.debug("Returning cached response")
+        return _chat_cache[cache_key]
+
+    # Get RAG context
+    context, citations = _get_rag_context(request.message, request.language)
+    logger.debug(f"Retrieved {len(context)} context chunks, {len(citations)} citations")
+
+    # Generate answer
+    answer, confidence = _generate_answer(request.message, context, request.history)
+
+    response = ChatResponse(
+        answer=answer,
+        citations=citations,
+        confidence=confidence
+    )
+
+    # Cache successful responses
+    if confidence > 0.5:
+        _chat_cache[cache_key] = response
+
+    logger.info(f"Chat response generated (confidence={confidence:.2f})")
+    return response
 
 
 # =============================================================================

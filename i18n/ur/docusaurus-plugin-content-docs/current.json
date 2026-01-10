@@ -1,22 +1,22 @@
 {
   "version.label": {
-    "message": "Next",
+    "message": "اگلا",
     "description": "The label for version current"
   },
   "sidebar.tutorialSidebar.category.Introduction": {
-    "message": "Introduction",
+    "message": "تعارف",
     "description": "The label for category 'Introduction' in sidebar 'tutorialSidebar'"
   },
   "sidebar.tutorialSidebar.category.Chapter 1: Physical AI & ROS 2": {
-    "message": "Chapter 1: Physical AI & ROS 2",
+    "message": "باب ۱: فزیکل اے آئی اور ROS 2",
     "description": "The label for category 'Chapter 1: Physical AI & ROS 2' in sidebar 'tutorialSidebar'"
   },
   "sidebar.tutorialSidebar.category.Chapter 2: Simulation with Gazebo": {
-    "message": "Chapter 2: Simulation with Gazebo",
+    "message": "باب ۲: گیزیبو کے ساتھ سمیولیشن",
     "description": "The label for category 'Chapter 2: Simulation with Gazebo' in sidebar 'tutorialSidebar'"
   },
   "sidebar.tutorialSidebar.category.Chapter 3: Vision-Language-Action Models": {
-    "message": "Chapter 3: Vision-Language-Action Models",
+    "message": "باب ۳: ویژن-لینگویج-ایکشن ماڈلز",
     "description": "The label for category 'Chapter 3: Vision-Language-Action Models' in sidebar 'tutorialSidebar'"
   }
 }
