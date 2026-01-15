@@ -6,7 +6,7 @@
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "start:ur": "docusaurus start --locale ur",
-    "build": "docusaurus build",
+    "build": "docusaurus clear && docusaurus build",
     "build:en": "docusaurus build",
     "build:ur": "docusaurus build --locale ur",
     "swizzle": "docusaurus swizzle",

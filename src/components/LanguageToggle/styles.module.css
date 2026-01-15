@@ -1,0 +1,88 @@
+/**
+ * LanguageToggle Styles (T-140)
+ */
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background: var(--ifm-color-emphasis-200);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.toggle:hover {
+  background: var(--ifm-color-emphasis-300);
+  border-color: var(--ifm-color-primary);
+}
+
+.toggle:focus {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+.toggleTrack {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggleThumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: var(--ifm-color-primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+
+.toggleThumbUrdu {
+  font-family: 'Noto Nastaliq Urdu', serif;
+}
+
+.toggleLabel {
+  color: var(--ifm-font-color-base);
+  white-space: nowrap;
+}
+
+/* Urdu label styling */
+[dir='rtl'] .toggleLabel {
+  font-family: var(--ifm-font-family-base);
+}
+
+[dir='ltr'] .toggle .toggleLabel:lang(ur) {
+  font-family: 'Noto Nastaliq Urdu', serif;
+  font-size: 1rem;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .toggle {
+  background: var(--ifm-color-emphasis-100);
+  border-color: var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .toggle:hover {
+  background: var(--ifm-color-emphasis-200);
+}
+
+/* Mobile responsive */
+@media (max-width: 996px) {
+  .toggle {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .toggleThumb {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8rem;
+  }
+}

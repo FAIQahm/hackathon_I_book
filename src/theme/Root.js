@@ -3,9 +3,23 @@ import { AuthProvider } from '@site/src/context/AuthContext';
 import Chatbot from '@site/src/components/Chatbot';
 import OnboardingWizard from '@site/src/components/OnboardingWizard';
 
-// Root wrapper with auth, personalization, and chatbot
+// Locale preference storage key (T-142)
+const LOCALE_STORAGE_KEY = 'preferred_locale';
+
+// Root wrapper with auth, personalization, chatbot, and locale handling
 function RootContent({ children }) {
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // T-142: Handle locale preference on initial load
+    // Save current locale if not already stored
+    const currentLocale = document.documentElement.lang?.split('-')[0] || 'en';
+    const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+
+    if (!storedLocale) {
+      localStorage.setItem(LOCALE_STORAGE_KEY, currentLocale);
+    }
+  }, []);
 
   useEffect(() => {
     // Check if user has completed onboarding
