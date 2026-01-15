@@ -196,7 +196,8 @@ class QdrantManager:
 
         metadata = {
             "source": filepath_str,
-            "language": "ur" if "/ur/" in filepath_str or "/i18n/ur/" in filepath_str else "en",
+            # Normalize path separators for cross-platform language detection
+            "language": "ur" if "/ur/" in filepath_str.replace("\\", "/") or "\\ur\\" in filepath_str else "en",
             "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         }
 
