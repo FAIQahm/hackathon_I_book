@@ -153,3 +153,55 @@
   direction: ltr;
   text-align: left;
 }
+
+/* ===========================================
+   Navbar Vertical Alignment Fix
+   =========================================== */
+
+/* Ensure all navbar items are vertically centered */
+.navbar {
+  align-items: center;
+}
+
+.navbar__items {
+  align-items: center;
+}
+
+.navbar__items--right {
+  align-items: center;
+}
+
+/* Fix language dropdown alignment */
+.navbar__item.dropdown {
+  display: flex;
+  align-items: center;
+}
+
+.navbar__link {
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure dropdown toggle is centered */
+.dropdown__toggle {
+  display: flex;
+  align-items: center;
+}
+
+/* Fix locale dropdown specifically */
+[class*="localeDropdown"] {
+  display: flex;
+  align-items: center;
+}
+
+/* Navbar brand alignment */
+.navbar__brand {
+  display: flex;
+  align-items: center;
+}
+
+/* Auth button alignment */
+.navbar__item button {
+  display: flex;
+  align-items: center;
+}
