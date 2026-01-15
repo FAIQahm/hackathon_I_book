@@ -14,12 +14,13 @@
       "use": "@vercel/python"
     }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/main.py" },
-    { "src": "/health", "dest": "/api/main.py" },
-    { "src": "/en/docs/(.*)", "dest": "/docs/$1" },
-    { "src": "/en/(.*)", "dest": "/$1" },
-    { "src": "/en", "dest": "/" },
-    { "handle": "filesystem" }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/main.py" },
+    { "source": "/health", "destination": "/api/main.py" }
+  ],
+  "redirects": [
+    { "source": "/en/docs/:path*", "destination": "/docs/:path*", "permanent": false },
+    { "source": "/en/:path*", "destination": "/:path*", "permanent": false },
+    { "source": "/en", "destination": "/", "permanent": false }
   ]
 }
