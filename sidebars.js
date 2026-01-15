@@ -10,9 +10,9 @@ const sidebars = {
       type: 'category',
       label: 'Chapters',
       items: [
-        'chapter-1',
-        'chapter-2',
-        'chapter-3',
+        'chapter-1/chapter-1',
+        'chapter-2/chapter-2',
+        'chapter-3/chapter-3',
       ],
     },
   ],
