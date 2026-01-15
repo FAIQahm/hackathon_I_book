@@ -8,13 +8,16 @@ GitHub Pages: https://physical-ai-book-api.vercel.app
 
 import os
 import logging
-from datetime import datetime
+import hashlib
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional, List
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field, EmailStr
 
 # =============================================================================
 # Logging Configuration
@@ -149,6 +152,42 @@ class PersonalizationApplyResponse(BaseModel):
 
 
 # =============================================================================
+# Authentication Models
+# =============================================================================
+
+class RegisterRequest(BaseModel):
+    """Registration request model."""
+    email: str = Field(..., example="user@example.com")
+    password: str = Field(..., min_length=6, example="securepassword123")
+    display_name: Optional[str] = Field(None, example="John Doe")
+
+
+class LoginRequest(BaseModel):
+    """Login request model."""
+    email: str = Field(..., example="user@example.com")
+    password: str = Field(..., example="securepassword123")
+
+
+class AuthResponse(BaseModel):
+    """Authentication response with tokens."""
+    access_token: str = Field(..., example="eyJ...")
+    refresh_token: str = Field(..., example="eyJ...")
+    user_id: str = Field(..., example="user-123")
+    email: str = Field(..., example="user@example.com")
+    role: str = Field(default="user", example="user")
+    display_name: Optional[str] = Field(None, example="John Doe")
+
+
+class UserResponse(BaseModel):
+    """User information response."""
+    user_id: str
+    email: str
+    role: str
+    display_name: Optional[str] = None
+    created_at: str
+
+
+# =============================================================================
 # Chat/RAG Models
 # =============================================================================
 
@@ -218,9 +257,15 @@ if extra_origins_env:
         if origin and origin not in allowed_origins:
             allowed_origins.append(origin)
 
+# Add Vercel preview deployment pattern support
+# Vercel preview URLs follow: https://<project>-<hash>-<team>.vercel.app
+# Use regex pattern to allow all Vercel preview deployments for this project
+allow_origin_regex = r"https://physical-ai-book.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
@@ -319,6 +364,16 @@ ONBOARDING_QUESTIONS = [
             {"value": "beginner", "label": "Beginner - New to these topics"},
             {"value": "intermediate", "label": "Intermediate - Some experience"},
             {"value": "advanced", "label": "Advanced - Experienced practitioner"}
+        ]
+    },
+    {
+        "dimension": "focus_area",
+        "question": "Which area of Physical AI interests you most?",
+        "options": [
+            {"value": "ros2", "label": "ROS 2 - Robot Operating System fundamentals"},
+            {"value": "simulation", "label": "Simulation - Gazebo and virtual environments"},
+            {"value": "computer-vision", "label": "Computer Vision - Perception and sensing"},
+            {"value": "vla-models", "label": "VLA Models - Vision-Language-Action AI"}
         ]
     },
     {
@@ -534,6 +589,160 @@ async def apply_personalization(settings: PersonalizationSettings):
 
 
 # =============================================================================
+# Authentication Endpoints
+# =============================================================================
+
+# In-memory user storage (for demo - replace with database in production)
+_users: dict = {}
+_tokens: dict = {}  # Maps access tokens to user_ids
+_refresh_tokens: dict = {}  # Maps refresh tokens to user_ids
+
+# Security
+security = HTTPBearer(auto_error=False)
+
+
+def _hash_password(password: str) -> str:
+    """Hash password using SHA256 (for demo - use bcrypt in production)."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _generate_token() -> str:
+    """Generate a secure random token."""
+    return secrets.token_urlsafe(32)
+
+
+def _get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[dict]:
+    """Extract user from bearer token."""
+    if not credentials:
+        return None
+    token = credentials.credentials
+    user_id = _tokens.get(token)
+    if not user_id:
+        return None
+    return _users.get(user_id)
+
+
+@app.post("/api/auth/register", response_model=AuthResponse)
+async def register(request: RegisterRequest):
+    """Register a new user."""
+    logger.info(f"Registration attempt for email={request.email}")
+
+    # Check if email already exists
+    for user in _users.values():
+        if user["email"] == request.email:
+            logger.warning(f"Registration failed: email already exists: {request.email}")
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Create user
+    user_id = f"user_{secrets.token_hex(8)}"
+    now = datetime.utcnow().isoformat() + "Z"
+
+    user = {
+        "user_id": user_id,
+        "email": request.email,
+        "password_hash": _hash_password(request.password),
+        "display_name": request.display_name,
+        "role": "user",
+        "created_at": now
+    }
+    _users[user_id] = user
+
+    # Generate tokens
+    access_token = _generate_token()
+    refresh_token = _generate_token()
+
+    _tokens[access_token] = user_id
+    _refresh_tokens[refresh_token] = user_id
+
+    logger.info(f"User registered successfully: {user_id}")
+
+    return AuthResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user_id=user_id,
+        email=request.email,
+        role="user",
+        display_name=request.display_name
+    )
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def login(request: LoginRequest):
+    """Login with email and password."""
+    logger.info(f"Login attempt for email={request.email}")
+
+    # Find user by email
+    password_hash = _hash_password(request.password)
+    user = None
+
+    for u in _users.values():
+        if u["email"] == request.email and u["password_hash"] == password_hash:
+            user = u
+            break
+
+    if not user:
+        logger.warning(f"Login failed: invalid credentials for {request.email}")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Generate new tokens
+    access_token = _generate_token()
+    refresh_token = _generate_token()
+
+    _tokens[access_token] = user["user_id"]
+    _refresh_tokens[refresh_token] = user["user_id"]
+
+    logger.info(f"User logged in: {user['user_id']}")
+
+    return AuthResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user_id=user["user_id"],
+        email=user["email"],
+        role=user["role"],
+        display_name=user.get("display_name")
+    )
+
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user info."""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    token = credentials.credentials
+    user_id = _tokens.get(token)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = _users.get(user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    logger.debug(f"User info requested for {user_id}")
+
+    return UserResponse(
+        user_id=user["user_id"],
+        email=user["email"],
+        role=user["role"],
+        display_name=user.get("display_name"),
+        created_at=user["created_at"]
+    )
+
+
+@app.post("/api/auth/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Logout and invalidate tokens."""
+    if credentials:
+        token = credentials.credentials
+        if token in _tokens:
+            del _tokens[token]
+            logger.info("User logged out successfully")
+
+    return {"message": "Logged out successfully"}
+
+
+# =============================================================================
 # Chat/RAG Endpoint
 # =============================================================================
 
@@ -575,18 +784,30 @@ def _get_rag_context(query: str, language: str = "en") -> tuple[list[dict], list
             must=[FieldCondition(key="language", match=MatchValue(value=language))]
         )
 
-        results = qdrant.search(
-            collection_name="textbook_chapters",
-            query_vector=query_vector,
-            query_filter=query_filter,
-            limit=5
-        )
+        # Try query_points first (newer API), fallback to search (older API)
+        try:
+            results = qdrant.query_points(
+                collection_name="textbook_chapters",
+                query=query_vector,
+                query_filter=query_filter,
+                limit=5
+            )
+            hits = results.points
+        except AttributeError:
+            # Fallback for older qdrant-client versions
+            results = qdrant.search(
+                collection_name="textbook_chapters",
+                query_vector=query_vector,
+                query_filter=query_filter,
+                limit=5
+            )
+            hits = results
 
         context_chunks = []
         citations = []
         seen_sources = set()
 
-        for hit in results:
+        for hit in hits:
             if hit.score < 0.5:  # Skip low relevance results
                 continue
 
@@ -615,7 +836,7 @@ def _get_rag_context(query: str, language: str = "en") -> tuple[list[dict], list
         return [], []
 
 
-def _generate_answer(query: str, context: list[dict], history: list[ChatMessage]) -> tuple[str, float]:
+def _generate_answer(query: str, context: list[dict], history: list[ChatMessage], language: str = "en") -> tuple[str, float]:
     """
     Generate an answer using OpenAI GPT based on retrieved context.
     Returns (answer, confidence).
@@ -624,7 +845,14 @@ def _generate_answer(query: str, context: list[dict], history: list[ChatMessage]
 
     if not openai_api_key:
         logger.warning("OpenAI API key not configured")
-        return _get_fallback_answer(query), 0.3
+        return _get_fallback_answer(query, language), 0.3
+
+    # Language instruction
+    language_instruction = ""
+    if language == "ur":
+        language_instruction = "\n\nIMPORTANT: You MUST respond in Urdu (اردو). Use Urdu script for your entire response."
+    elif language != "en":
+        language_instruction = f"\n\nIMPORTANT: You MUST respond in {language}."
 
     try:
         from openai import OpenAI as OpenAIClient
@@ -640,14 +868,14 @@ def _generate_answer(query: str, context: list[dict], history: list[ChatMessage]
             system_prompt = f"""You are a helpful assistant for the Physical AI educational textbook.
 Answer questions based ONLY on the provided context from the book.
 If the question cannot be answered from the context, say "I don't have information about that in the Physical AI book content."
-Be concise but informative.
+Be concise but informative.{language_instruction}
 
 Context from the book:
 {context_text}"""
         else:
-            system_prompt = """You are a helpful assistant for the Physical AI educational textbook.
+            system_prompt = f"""You are a helpful assistant for the Physical AI educational textbook.
 You don't have specific content loaded right now. Provide general guidance about Physical AI topics like ROS 2, robotics, Gazebo simulation, and AI.
-If asked about specific book content, suggest the user check the relevant chapter."""
+If asked about specific book content, suggest the user check the relevant chapter.{language_instruction}"""
 
         # Build messages with history
         messages = [{"role": "system", "content": system_prompt}]
@@ -677,14 +905,25 @@ If asked about specific book content, suggest the user check the relevant chapte
 
     except Exception as e:
         logger.error(f"OpenAI generation error: {e}")
-        return _get_fallback_answer(query), 0.3
+        return _get_fallback_answer(query, language), 0.3
 
 
-def _get_fallback_answer(query: str) -> str:
+def _get_fallback_answer(query: str, language: str = "en") -> str:
     """Provide a fallback answer when RAG is unavailable."""
     query_lower = query.lower()
 
-    # Simple keyword-based fallbacks
+    # Urdu fallback responses
+    if language == "ur":
+        if "physical ai" in query_lower:
+            return "فزیکل اے آئی سے مراد ایسے اے آئی سسٹمز ہیں جو روبوٹس اور سینسرز کے ذریعے فزیکل دنیا کے ساتھ تعامل کرتے ہیں۔ یہ ذہین فزیکل سسٹمز بنانے کے لیے مشین لرننگ، کمپیوٹر ویژن، اور روبوٹکس کو یکجا کرتا ہے۔"
+        elif "ros" in query_lower or "robot operating system" in query_lower:
+            return "ROS 2 (روبوٹ آپریٹنگ سسٹم 2) ایک اوپن سورس روبوٹکس مڈل ویئر فریم ورک ہے۔ یہ روبوٹ ایپلی کیشنز بنانے کے لیے ٹولز اور لائبریریز فراہم کرتا ہے۔"
+        elif "gazebo" in query_lower:
+            return "گزیبو ایک طاقتور 3D روبوٹکس سمولیٹر ہے جو ROS 2 کے ساتھ مربوط ہوتا ہے۔ یہ آپ کو حقیقی ہارڈویئر پر تعینات کرنے سے پہلے ورچوئل ماحول میں روبوٹ ڈیزائنز کی جانچ کرنے کی اجازت دیتا ہے۔"
+        else:
+            return "ابھی نالج بیس سے کنکشن میں مسئلہ ہے۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں، یا Physical AI، ROS 2، اور روبوٹکس کے بارے میں معلومات کے لیے براہ راست ابواب دیکھیں۔"
+
+    # English fallback responses (default)
     if "physical ai" in query_lower:
         return "Physical AI refers to AI systems that interact with the physical world through robots and sensors. It combines machine learning, computer vision, and robotics to create intelligent physical systems."
     elif "ros" in query_lower or "robot operating system" in query_lower:
@@ -716,8 +955,8 @@ async def chat(request: ChatRequest):
     context, citations = _get_rag_context(request.message, request.language)
     logger.debug(f"Retrieved {len(context)} context chunks, {len(citations)} citations")
 
-    # Generate answer
-    answer, confidence = _generate_answer(request.message, context, request.history)
+    # Generate answer with language support
+    answer, confidence = _generate_answer(request.message, context, request.history, request.language)
 
     response = ChatResponse(
         answer=answer,
